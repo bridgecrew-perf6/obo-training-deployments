@@ -1,0 +1,9 @@
+app:
+
+  env:
+    "epayment.app.host" : "${app_server_ip}:8095"
+    "epayment.app.context" : "enterprise"
+
+  modules:
+    - { order: 230, version: 2.55, file: "modules/epayment/rameses-gov-epayment.jar" }
+    - { order: 231, version: 2.55, file: "modules/epayment/rameses-gov-epayment-report.jar" }
