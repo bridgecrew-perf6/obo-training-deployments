@@ -18,6 +18,8 @@ services:
       - ../../_res/env.conf
       - ../../_custom/env.conf
     ports:
+      - "8060:8060"
+      - "8061:8061"
       - "8070:8070"
     volumes:
       - ../../_custom/datasources:/services/datasources
