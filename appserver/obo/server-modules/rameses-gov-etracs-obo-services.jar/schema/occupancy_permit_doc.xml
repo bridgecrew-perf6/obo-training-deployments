@@ -1,0 +1,19 @@
+<schema>
+	<element tablename="occupancy_permit_doc">
+		<field name="objid" primary="true" prefix="OASUBDOC"/>
+		<field name="appid" required="true"/>
+		<field name="state" required="true" type="integer"/>
+
+		<complex name="doctype" ref="obo_doctype" jointype="many-to-one" required="false">
+			<key field="doctypeid" target="objid" />
+		</complex>  
+
+		<field name="remarks"/>
+
+		<!-- copied from doctype -->
+		<field name="amount" type="decimal"/>
+		<field name="controlid" />
+
+	</element>
+</schema>
+

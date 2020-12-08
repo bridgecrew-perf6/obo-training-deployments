@@ -1,0 +1,47 @@
+import com.rameses.annotations.*;
+
+class OccupancyRpuService {
+	
+	@DataContext("building_permit_rpu")
+	def bRpuEm;
+
+	@DataContext("occupancy_rpu")
+	def rpuEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("MenuNotificationService")
+	def menuSvc;
+
+    @Env
+    def env;
+
+    @ProxyMethod
+    public def getBldgRpus( def o  ) {
+    	if(!o.appid) throw new Exception("appid is required");
+    	return bRpuEm.find( [appid: o.appid ]).list();
+    }
+
+	@ProxyMethod
+	public void saveFaas( def o ) {
+		if(!o.objid) throw new Exception("objid is required");
+		rpuEm.find( [objid: o.objid ]).update( [faasid: o.faasid, state: 1 ] );
+		def list = [];
+		list << "occupancy_rpu";
+		list << "obo-rpt";
+		menuSvc.notify( list );					
+	}
+
+	@ProxyMethod
+	public void approve( def o ) {
+		if(!o.objid) throw new Exception("objid is required");
+		rpuEm.find( [objid: o.objid ]).update( [state: 2, tdno: o.tdno ] );	
+		def list = [];
+		list << "occupancy_rpu";
+		list << "obo-rpt";
+		menuSvc.notify( list );							
+	}
+
+	
+}

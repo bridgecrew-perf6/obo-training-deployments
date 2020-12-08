@@ -1,0 +1,37 @@
+<schema>
+	<element tablename="vw_occupancy_rpu">
+		<field name="objid"  primary="true"/>
+		<field name="state" type="integer"/>
+		<field name="dtcreated" />
+		<field name="appid" />
+		<field name="apptype" />
+		<field name="faasid" />
+		<field name="tdno" />
+		<field name="txnmode" indexed="true"/>
+		
+		<field name="bldgpermitid" />
+		<field name="bldgappid" />
+		<field name="bldgpermitno" />
+		<field name="bldgpermitdtissued" />
+
+		<field name="occpermitid" />
+		<field name="occpermitno" />
+		<field name="occpermitdtissued" />
+
+		<complex name="applicant" ref="occupancy_permit_entity" jointype="many-to-one" required="true">
+			<key field="applicantid" target="objid" />
+		</complex>			
+
+		<field name="actualprojectcost" />
+		<field name="occupancytypeid" />
+		<field name="actualnumunits" />
+		<field name="actualnumfloors" />
+		<field name="actualtotalfloorarea" />
+		<field name="actualheight" />
+		<field name="dtactualstarted" />
+		<field name="dtactualcompleted" />
+		<field name="inspectiondate" />
+		<field name="title" />
+		<field name="location_text" />
+	</element>
+</schema>	

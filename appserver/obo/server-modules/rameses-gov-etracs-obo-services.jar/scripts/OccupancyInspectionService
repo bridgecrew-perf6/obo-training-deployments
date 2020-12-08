@@ -1,0 +1,103 @@
+import com.rameses.annotations.*;
+
+class OccupancyInspectionService {
+	
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@DataContext("vw_occupancy_permit")
+	def vwAppEm;
+
+	@DataContext("occupancy_inspection")
+	def inspectionEm;
+
+	@DataContext("vw_occupancy_inspection")
+	def vwInspEm;
+
+	@Env
+	def env;
+
+	//this is when creating an evaluation on the fly 
+	@ProxyMethod
+	public def create(def o ) {
+		if(!o.appno) throw new Exception("appno is required");
+
+		def app = vwAppEm.find( [appno: o.appno ]).first();
+
+		if(!app) throw new Exception("Application not found");
+		if( !app.task.state.matches('inspection') ) 
+			throw new Exception("Please ensure that current state must be in inspection state");
+		
+		o.appid = app.objid;
+		o.appdate = dateSvc.getServerDate();
+		o = inspectionEm.create( o )
+
+		//fire the workflow...
+		def f = [:];
+		f.processname = 'occupancy_inspection';
+		f.notificationid = 'occupancy_inspection:' + o.typeid.toLowerCase();
+		f.refid = o.objid;
+		f.startdate = o.appdate;
+		f.info = [:];
+		wfSvc.start( f );
+	} 
+
+	@ProxyMethod
+	public def startTasks(  def o ) {
+		if(!o.appid) throw new Exception("appid is required in OccupancyInspectionService.startTasks");
+		
+		def appid = o.appid;
+		def state = o.state;
+
+		def mlist = inspectionEm.getInspectionsToActivate( [appid: appid, state: state ] )*.objid;
+		def list = [];
+		if( mlist ) {
+			def dt = dateSvc.getServerDate();
+			mlist.each {
+				def m = [appid: appid, typeid: it ]
+				m = inspectionEm.create( m );
+				def f = [:];
+				f.processname = 'occupancy_inspection';
+				f.refid = m.objid;
+				f.startdate = dt;
+				f.info = [ type: it, appid: appid ];
+				wfSvc.start(f);		
+
+				//load notifications		
+				list << it.toLowerCase();
+			}
+		}	
+		return list;
+	}
+
+	@ProxyMethod
+	public def reactivateTasks(  def o ) {
+		if(!o.appid) throw new Exception("appid is required in OccupancyInspectionService.reactivateTasks");
+		def mlist = vwInspEm.select("objid,taskid,typeid").find( [appid: o.appid ] ).where( " task.state = 'for-revision' " ).list();
+		def list = [];
+		if( mlist ) {
+			def dt = dateSvc.getServerDate();
+			mlist.each {
+				def f = [:];
+				f.processname = 'occupancy_inspection';
+				f.refid = it.objid;
+				f.taskid = it.taskid;
+				f.startdate = dt;
+				f.action = "reactivate";
+				f.info = [:];
+				wfSvc.signal(f);
+
+				//load notifications		
+				list << it.typeid.toLowerCase();	
+			}		
+		}
+		return list;
+	}
+
+
+
+	
+}

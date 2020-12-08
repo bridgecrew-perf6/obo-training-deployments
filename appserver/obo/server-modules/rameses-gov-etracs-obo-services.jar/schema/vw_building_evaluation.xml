@@ -1,0 +1,31 @@
+<schema>
+	<element tablename="vw_building_evaluation">
+		<field name="objid" primary="true" />
+		<field name="appid" />
+
+		<complex name="app" ref="vw_building_permit" jointype="many-to-one">
+			<key field="appid" target="objid" />
+		</complex>	
+		<field name="typeid" />
+		<field name="sectionid" />
+		<field name="taskid" />
+		<field name="org_objid" />
+
+		<field name="type_title" />
+		<field name="type_sortindex" />
+
+		<field name="task_state" />
+		<field name="task_dtcreated" />
+		<field name="task_startdate" />
+		<field name="task_enddate" />
+		<field name="task_assignee_objid" />
+		<field name="task_assignee_name" caption="Assignee"/>
+		<field name="task_actor_objid" />
+		<field name="task_actor_name" />
+		<field name="task_title" />
+		<field name="task_tracktime" />
+		<field name="app_task_state" />
+	</element>
+</schema>
+
+

@@ -1,0 +1,45 @@
+<schema>
+	<element tablename="building_permit_entity">
+		<field name="objid" primary="true" prefix="OBBPENT" />
+		<field name="appid"  />
+
+
+		<field name="profileid" />
+		<field name="profileno" />
+		<field name="entitytype" />		
+		<field name="name" required="true" searchable="true" caption="Name"/>		
+		<field name="firstname" />
+		<field name="middlename" />
+		<field name="lastname" />
+		<field name="resident" />
+
+		<field name="address_objid" />
+		<field name="address_text" />
+		<field name="address_unitno" />
+		<field name="address_bldgno" />
+		<field name="address_bldgname" />
+		<field name="address_street" />
+		<field name="address_subdivision" />
+		<field name="address_barangay_objid" />
+		<field name="address_barangay_name" />
+		<field name="address_citymunicipality" />
+		<field name="address_province" />
+
+		<field name="tin" />
+		<field name="email" />
+		<field name="mobileno" />
+		<field name="phoneno" />
+
+		<field name="id_type_name" />
+		<field name="id_idno" />
+		<field name="id_placeissued" />
+		<field name="id_dtissued" />
+
+		<complex name="id" ref="idtype" jointype="many-to-one" required="false">
+			<key field="id_type_name" target="name" />	
+		</complex>	
+	</element>
+</schema>		
+
+
+

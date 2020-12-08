@@ -1,0 +1,22 @@
+<schema>
+	<element tablename="obo_itemaccount">
+		<field name="objid" primary="true" visible="true" caption="ID"/>
+		<field name="title" searchable="true"/>
+		<field name="item_objid" />
+		<field name="item_code" caption="Map Acct Code"/>
+		<field name="item_title" caption="Map Acct Title"/>
+		<field name="item_fund_objid" />
+		<field name="item_fund_title" caption="Map Acct Fund"/>
+		<field name="sortorder" caption="Sort Order"/>	
+
+		<complex name="doctype" ref="vw_obo_doctype" jointype="many-to-one" required="false">
+			<key field="doctypeid" target="objid" />		
+		</complex>	
+
+		<!-- deprecated fields -->		
+		<field name="groupid" />
+		<field name="feegroup" />
+		<field name="tag" />
+
+	</element>
+</schema>	

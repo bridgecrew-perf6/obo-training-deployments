@@ -1,0 +1,37 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+import com.rameses.util.*;
+import com.rameses.functions.*;
+import java.text.*;
+
+class OboLoginService {
+
+	@Service(value="AdminAuthService", connection="admin")
+	def adminSvc;
+
+	@ProxyMethod
+	public def login( def o ) {
+		if( !o.username) return [status:"ERROR", message: "username is required"];
+		if( !o.password) return [status:"ERROR", message: "password is required"];
+
+		def pwd = Encoder.md5.encode( o.password, o.username );
+		def result = adminSvc.authenticate(o.username, pwd);
+		if(!result) 
+			return [ status: "ERROR", message: "User account not found" ];
+		result.password = pwd;	
+		return result;
+	}
+
+	@ProxyMethod
+	public def register( def o ) {
+		println o;
+		return [terminalid: (new UID()).toString(), macaddress:o.macaddress];
+	}
+
+	@ProxyMethod
+	public def recover( def o ) {
+		println o;
+		return [terminalid: (new UID()).toString(), macaddress:o.macaddress ];
+	}
+
+}

@@ -1,0 +1,10 @@
+<schema>
+	<element tablename="occupancy_inspection_type_itemaccount">
+		<field name="objid" primary="true"/>
+		<field name="typeid" />
+		<complex name="item" ref="obo_itemaccount" jointype="many-to-one" required="true">
+			<key field="itemid" target="objid" />
+		</complex>	
+	</element>
+</schema>	
+

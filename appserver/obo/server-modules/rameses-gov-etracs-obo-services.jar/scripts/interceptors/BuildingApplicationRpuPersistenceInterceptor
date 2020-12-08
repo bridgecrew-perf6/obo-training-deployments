@@ -1,0 +1,47 @@
+import com.rameses.annotations.*;
+
+class BuildingApplicationRpuPersistenceInterceptor {
+	
+	@Service("DateService")
+	def dateSvc;
+
+
+	@DataContext("building_permit_rpu")
+	def rpuEm;
+
+	@DataContext("building_permit_entity")
+	def appEntityEm;
+
+	@Env
+	def env;
+
+	@Before(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'building_permit_rpu' }")
+	public void beforeUpdateApplicationRPU(def evt) {
+		def o = evt.args[0];
+		//search first if entity exists in application_entity;	
+		def appOwner = appEntityEm.find( [appid: o.appid, profileid: o.owner.objid] ).first();
+		if( !appOwner ) {
+			o.owner.appid = o.appid;
+			appOwner = appEntityEm.create( o.owner );
+		}
+		o.ownerid = appOwner.objid;
+	}
+
+	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname == 'building_permit_rpu' }")
+	public void beforeRemoveApplicationRPU(def evt) {
+		def o = evt.args[0];
+		def rpu = rpuEm.find( [objid: o.objid] ).first();
+		if( rpu.taxclearanceid ) throw new Exception("Cannot remove this item. Clearance already issued");
+		if( rpu.truecopycertid ) throw new Exception("Cannot remove this item. Clearance already issued");		
+		o.appid = rpu.appid;
+	}
+
+	@After(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname == 'building_permit_rpu' }")
+	public void afterRemoveApplicationRPU(def evt) {
+		def o = evt.args[0];
+		appEntityEm.cleanUpEntity( [appid: o.appid] );
+	}
+
+
+
+}

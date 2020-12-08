@@ -1,0 +1,173 @@
+import com.rameses.annotations.*; 
+
+class BuildingPermitDocFormReportInterceptor {
+	
+	@DataContext("vw_building_permit_doc")
+	def vwSubdocEm;
+
+
+	@DataContext("vw_building_permit_info")
+	def vwInfoEm;
+
+	@DataContext("vw_building_permit")
+	def vwAppEm;
+
+	@DataContext("building_permit_task")
+	def appTaskEm;
+
+	@DataContext("vw_building_evaluation")
+	def vwEvalEm;
+
+	@DataContext("building_evaluation_task")
+	def evalTaskEm;
+
+	@DataContext("vw_building_permit_fee_payment")
+	def payEm;
+
+	@DataContext("building_permit_checklist")
+	def checkListEm;
+
+	@DataContext("sys_signature")
+	def signatureEm;
+
+	@After(pattern="FormReportService.getData", eval="#{args[0].reportid == 'building_permit_doc' }")
+	public void getReport( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+
+		def id = p.parameters.objid;
+
+		def docsub = vwSubdocEm.find([objid: id ]).first();
+
+		if( docsub.template == null ) {
+			docsub.template = docsub.doctype.template;
+		}
+
+		def app = vwAppEm.find( [objid: docsub.appid ] ).first();
+
+		docsub.applicant = app.applicant;
+		docsub.location = app.location;
+		docsub.occupancytype = app.occupancytype;
+		docsub.appno = app.appno;
+		docsub.apptype = app.apptype;
+
+		//this is dtfiled due to the reports
+		docsub.dtfiled = app.appdate;		
+		docsub.permitno = app.controlno;
+		docsub.title = app.title;
+		docsub.numunits = app.numunits;
+		docsub.fixedcost = app.fixedcost;
+		docsub.projectcost = app.projectcost;
+		docsub.dtproposedconstruction = app.dtproposedconstruction;
+		docsub.dtexpectedcompletion = app.dtexpectedcompletion;
+		docsub.totalfloorarea = app.totalfloorarea;
+		docsub.height = app.height;
+		docsub.numfloors = app.numfloors;
+		docsub.zone = app.zone;
+		docsub.zoneclass = app.zoneclass;
+
+		
+		//determine the date received
+		docsub.dtreceived = appTaskEm.find([refid: docsub.appid, state:'receiving' ] ).select("enddate").first()?.enddate;		
+
+		//load checklist items if any
+		def chklist = checkListEm.find( [parentid: docsub.objid]).list();
+		chklist.each {
+			docsub.put( it.typeid.toLowerCase(), 1 );
+			if( it.values  ) {
+				for(int i=0;i < it.values.size();i++) {
+					docsub.put( it.typeid.toLowerCase()+"_"+i, it.values[i] );
+				}
+			}
+		}
+
+		//load infos
+		def infos = vwInfoEm.find( [parentid: docsub.objid ] ).list();
+		infos.each {
+			def vname = it.name.toLowerCase();
+			if( it.datatype == 'date')  docsub.put( vname,  it.datevalue);
+			else if( it.datatype == 'decimal') docsub.put(vname, it.decimalvalue);
+			else if( it.datatype == 'integer') docsub.put(vname, it.intvalue);
+			else if( it.datatype == 'boolean') docsub.put(vname, ( (it.booleanvalue == 0) ? false: true));
+			else it.value = docsub.put(vname,  it.stringvalue);
+		}
+
+		//load fees
+		def feeParentid = docsub.objid;
+		if( docsub.doctype.subtypeof !=null ) {
+			def papp = vwSubdocEm.find( [appid: docsub.appid, doctypeid: docsub.doctype.subtypeof ]).first();
+			feeParentid = papp.objid;
+		}
+		def pay = payEm.find( [ parentid: feeParentid ] ).select("payment.refno,payment.refdate,amount").groupBy("payment.refno,payment.refdate").first();
+		if( pay?.payment ) {
+			docsub.receiptno = pay.payment.refno;
+			docsub.receiptdate = pay.payment.refdate;
+			docsub.amount = pay.amount;		
+		}
+
+		//load evaluator. find the associated building evaluation
+		def zeval = vwEvalEm.find( [appid: docsub.appid, sectionid: docsub.sectionid ] ).first();
+		if( zeval ) {
+			//load evaluator
+			def tsk = evalTaskEm.find( [refid: zeval.objid, state:'evaluation' ] ).orderBy("dtcreated DESC").first();
+			docsub.evaluator = tsk.assignee;
+			docsub.dtevaluated = tsk.enddate;
+			docsub.dtapproved = tsk?.enddate;
+		}
+
+		if( docsub?.evaluator?.objid ) {
+			def info = signatureEm.find( [userid: docsub.evaluator.objid] ).first();
+			if(info) {
+				docsub.evaluator.signature = info.signature;
+				docsub.evaluator.displayname = info.displayname;
+			}	
+		}
+
+		//load issuer
+		if( docsub.issuedby?.objid ) {
+			def info = signatureEm.find( [userid: docsub.issuedby.objid] ).first();
+			if( info ) {
+				docsub.issuedby.signature = info.signature;
+				docsub.issuedby.name = info.displayname;
+			}	
+		}
+
+		//this is a temporary test
+		if( docsub.doctype.endorserid ) {
+			docsub.endorser = signatureEm.find( [objid: docsub.doctype.endorserid] ).first(); 
+		}
+		if( docsub.doctype.approverid ) {
+			docsub.approver = signatureEm.find( [objid: docsub.doctype.approverid] ).first(); 
+		}
+		docsub.permittype = "BUILDING PERMIT";
+		//extra settings
+		result.printable = (docsub.controlid != null);
+		result.data = docsub;
+	}	
+
+	@Before(pattern="JasperEmailQueueService.send", eval="#{ args[0].reportid == 'building_permit_doc' }")
+	public void beforeQueueEmail( def evt ) {
+		def p = evt.args[0];
+		p.to = "elmonazareno@gmail.com";
+		p.subject = "Test Email " + p.refid;
+		p.message = "Test Email " + p.refid;		
+	}
+
+    @Before(pattern="JasperReportEmailService.send", eval="#{ args[0].reportid == 'building_permit_doc' }", index=-10000)
+    public void emailTest(def evt) {
+        def o = evt.args[0];
+        def refid = o.refid;
+        o.attachments = [
+            [ 	title: "Subdoc" + ".pdf", 
+            	reportid: o.reportid, 
+            	parameters: [objid: refid ] 
+            ]
+        ];
+        o.to = o.to;
+        o.subject = o.subject;
+        o.message = o.message;
+        o.connection = "obo-email-server";
+    } 
+
+
+}

@@ -1,0 +1,33 @@
+import com.rameses.annotations.*;
+
+class OboRequirementPersistenceInterceptor {
+	
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext(dynamic=true)
+	def dynEm;
+
+	@Env
+	def env;
+
+	//REQUIREMENTS
+	@Before(pattern="PersistenceService.(create|update)", eval="#{args[0]._schemaname.matches('(building|occupancy)_permit_requirement') }") 
+	public void onSaveRequirement( def evt ) {
+		def o = evt.args[0];
+		o.reviewer = [objid: env.USERID, name: env.FULLNAME ];
+		o.dtreviewed = dateSvc.getServerDate();
+	} 
+	
+	@After(pattern="PersistenceService.create", eval="#{args[0]._schemaname.matches('(building|occupancy)_permit_requirement') }") 
+	public void afterCreateReq( def evt ) {
+		def o = evt.args[0];
+		def z = evt.result;
+		if(o.previd ) {
+			def reqEm = dynEm.lookup( o._schemaname );
+			reqEm.find( [objid: o.previd] ).update( [supersederid: z.objid ] );
+		}	
+	} 
+
+
+}

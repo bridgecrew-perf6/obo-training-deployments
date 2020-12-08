@@ -1,0 +1,19 @@
+<schema>
+	<element tablename="obo_control">
+		<field name="objid" primary="true" prefix="OBOCTRL"/>
+		<field name="controlno"	/>
+		<field name="doctypeid"	/>
+		<field name="dtissued"	/>
+		<field name="issuedby_objid" />
+		<field name="issuedby_name" />
+		<field name="state"	/>
+		<field name="expirydate"/>
+		<field name="remarks"/>
+
+		<field name="template"/>
+		<field name="endorserid" />
+		<field name="approverid" />
+		<field name="reportheader" />
+
+	</element>
+</schema>

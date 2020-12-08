@@ -1,0 +1,48 @@
+import com.rameses.annotations.*; 
+
+class BuildingPermitSignageReportInterceptor {
+	
+	@DataContext("vw_building_permit")
+	def permitEm;
+
+	@DataContext("vw_building_permit_doc")
+	def vwSubdocEm;
+
+	def findPermit( def id ) {
+		//building permit can be loaded using appid or objid(building permit)
+		def permit = permitEm.find( [objid: id] ).first();	
+		if(!permit) {
+			permit = permitEm.find( [appid: id ]).first();
+			if(!permit) throw new Exception("Permit not found");
+		}
+		return permit;
+	}
+
+	@After(pattern="FormReportService.getData", eval="#{args[0].reportid == 'building_permit_signage' }")
+	public void getBuildingPermitReport( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def id = p.parameters.objid;
+
+		def permit = findPermit( id );
+
+		permit.name = permit.applicant?.lastname + ", " + permit.applicant?.firstname;
+
+		def subDocs = vwSubdocEm.find([appid: permit.appid ]).where("doctype.type='ANCILLARY' AND NOT(controlid IS NULL)").orderBy("doctype.sortorder ASC").list();
+
+		permit.profarchitect =	subDocs.find{ it.doctypeid.toLowerCase() == 'architectural' }?.designprofessional;	 
+		permit.profcivil = subDocs.find{ it.doctypeid.toLowerCase() == 'civil_structural' }?.designprofessional;
+		permit.profelectrical = subDocs.find{ it.doctypeid.toLowerCase() == 'electrical' }?.designprofessional;
+		permit.profelectrical = subDocs.find{ it.doctypeid.toLowerCase() == 'electrical' }?.designprofessional;
+		permit.profmechanical =  subDocs.find{ it.doctypeid.toLowerCase() == 'mechanical' }?.designprofessional;
+		permit.profsanitary = subDocs.find{ it.doctypeid.toLowerCase() == 'sanitary' }?.designprofessional;
+		permit.profplumbing = subDocs.find{ it.doctypeid.toLowerCase() == 'plumbing' }?.designprofessional;
+		permit.profelectronic = subDocs.find{ it.doctypeid.toLowerCase() == 'electronic' }?.designprofessional;
+
+		permit.template = "reports/obo/building_permit_signage";
+		
+		result.data = permit;
+	}	
+
+
+}

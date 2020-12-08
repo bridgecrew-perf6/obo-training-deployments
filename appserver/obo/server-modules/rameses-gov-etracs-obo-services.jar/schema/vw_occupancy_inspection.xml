@@ -1,0 +1,34 @@
+<schema>
+	<element tablename="vw_occupancy_inspection">
+		<field name="objid" primary="true" />
+
+		<complex name="app" ref="vw_occupancy_permit" jointype="many-to-one">
+			<key field="appid" target="objid" />
+		</complex>	
+
+		<complex name="bldgpermit" ref="vw_building_permit" jointype="many-to-one" required="true">
+			<key field="bldgpermitid" target="objid" />
+		</complex>
+
+		<field name="typeid" />
+		<field name="taskid" />
+		<field name="uploaded" />
+		<field name="type_title" />
+		<field name="type_sortindex" />
+
+		<field name="task_state" />
+		<field name="task_startdate" />
+		<field name="task_enddate" />
+		<field name="task_assignee_objid" />
+		<field name="task_assignee_name" />
+		<field name="task_actor_objid" />
+		<field name="task_actor_name" />
+		<field name="task_title" />
+		<field name="task_timediff" />
+
+		<field name="app_task_state" />
+
+		<field name="org_objid" />
+		<field name="sectionid" />
+	</element>
+</schema>

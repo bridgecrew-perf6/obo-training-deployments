@@ -1,0 +1,49 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+import com.rameses.util.*;
+import com.rameses.functions.*;
+import java.text.*;
+
+class OboMenuService {
+
+	@DataContext("building_evaluation_type")
+	def evalTypeEm;
+
+	@DataContext("occupancy_inspection_type")
+	def inspTypeEm;
+
+	@DataContext("obo_doctype")
+	def docTypeEm;
+
+	@Env
+	def env;
+
+	@Service("OboUserRoleService")
+    def roleSvc;
+
+	@ProxyMethod
+	public def getEvaluationTypesMenu() {
+		def m = [:];
+        m.roles = roleSvc.getRolesString([:]); 
+        m.orgid = (env.ORGROOT==1) ? "root" : env.ORGID;
+        return evalTypeEm.getAllowedTypes( m );
+	}
+
+	@ProxyMethod
+	public def getInspectionTypesMenu() {
+		def m = [:];
+        m.roles = roleSvc.getRolesString([:]); 
+        m.orgid = (env.ORGROOT==1) ? "root" : env.ORGID;
+        return inspTypeEm.getAllowedTypes( m );
+	}
+
+	@ProxyMethod
+	public def getDocumentsForIssuance() {
+		def m = [:];
+        m.roles = roleSvc.getRolesString([:]); 
+        m.orgid = (env.ORGROOT==1) ? "root" : env.ORGID;
+		return docTypeEm.getDocumentsToIssue( m );
+	}
+
+
+}

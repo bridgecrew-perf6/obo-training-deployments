@@ -1,0 +1,141 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+import obo.facts.*;
+import java.text.*;
+import treasury.utils.*;
+import treasury.facts.*;
+import enterprise.utils.*;
+
+public class BuildingPermitRpuService  {
+
+	@DataContext("building_permit_rpu")
+	def rpuEm;
+
+	@DataContext("building_permit_entity")
+	def entityEm;
+
+	@DataContext("building_permit")
+	def appEm;
+
+	@Service(value="RPTCertificationOnlineService", connection="rpt")
+	def rptSvc;
+
+	@Service(value="TDOnlineService", connection="rpt")
+    def tdSvc;
+
+    @Service(value="EntityService", connection="entity")
+    def entitySvc;
+
+    @DataContext("vw_building_permit")
+	def vwAppEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@ProxyMethod
+	public void generateDocs( def o ) {
+		def app, list;
+		if( o.appid ) {
+			app = appEm.find( [objid: o.appid ]).first();
+			list = rpuEm.find( [appid: o.appid] ).list();
+		}
+		else {
+			def rpu = rpuEm.find( [objid: o.objid] ).first();
+			app = appEm.find( [objid: rpu.appid ]).first();
+			list = [rpu];
+		}
+		
+		list.each {
+			def params = [:];
+			params.entityid = entityEm.find( [objid: it.ownerid] ).first()?.profileid;			
+			if(!params.entityid ) 
+				throw new Exception("entityid is required in BuildingApplicationRptService.generateDocs");
+			params.faas = [objid:  it.refid, tdno: it.tdno];
+			params.refid = app.objid;
+			//tracking no. is used becuase we cannot yet generate the appno at this time.
+			params.refno = app.trackingno;	
+			params.refdate = app.appdate;
+			if( !params.refdate ) params.refdate = dateSvc.getServerDate();
+			params.reftype = "building_permit";
+			params.purpose = "For Building Permit Application"
+
+			def u = [:];
+			if( !it.truecopycertid ) {
+				try {
+					def cert = rptSvc.issueTrueCopy(params);
+					u.truecopycertid = cert.objid;				
+				}
+				catch(e) {
+					throw new Exception( "Error in issuing true copy. " + e?.message );
+				}
+			}
+			if( !it.taxclearanceid ) {
+				try {
+					params.faases = [params.faas];
+					def cert = rptSvc.issueTaxClearance(params);
+					u.taxclearanceid = cert.objid;				
+				}
+				catch(e) {
+					def errmsg = e.message
+					if( errmsg == null) {
+						errmsg = "Please contact the assessors office. This entry may have been cancelled";
+					}
+					throw new Exception( "Error in issuing tax clearance. " + errmsg );					
+				}
+			}
+			if(u) {
+				rpuEm.find( [objid: it.objid ]).update( u );
+			}
+		}
+	}
+
+
+ 	@ProxyMethod
+    public def findRpu( def params ) {
+        if(!params.appid) throw new Exception("appid is required");    
+        if(!params.refno) throw new Exception("refno is required");
+		def info = tdSvc.verifyTaxDec(params);
+		if(!info)
+			throw new Exception("RPU not found");
+        info.refid = info.objid;
+        if(!info.taxpayer?.objid ) 
+        	throw new Exception("Error in OboOnlineService. There is no taxpayer.objid returned in TDOnlineService");
+        def txp = info.remove("taxpayer");   
+        info.lotno = info.remove("cadastrallotno");
+        
+        def entity = entitySvc.open( [objid: txp.objid ] );
+        info.owner.putAll( 
+            [
+                profileid: entity.objid,
+                profileno: entity.entityno,
+                birthdate: entity.birthdate,
+                email: entity.email,
+                mobileno: entity.mobileno,
+                gender: entity.gender,
+                name: entity.name,
+                entitytype: entity.type,
+                lastname: entity.lastname,
+                firstname: entity.firstname,
+                middlename: entity.middlename,
+                tin: entity.tin,
+                address: entity.address
+            ]
+        );
+        info.owner.resident =  (entity.address.type == "nonlocal") ? 0 : 1;
+
+        //check if applicant is the owner of the lot
+		def app = vwAppEm.find( [objid: params.appid ] ).first();
+		if( app.applicant?.profileid == entity.objid ) {
+			info.lotowned = 1;
+		}
+		else {
+			info.lotowned = 0;
+		};
+		info.remove("objid");
+		info.appid = params.appid;
+        return info;
+    }
+
+
+}

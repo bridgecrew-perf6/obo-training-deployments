@@ -1,0 +1,111 @@
+import com.rameses.annotations.*; 
+
+class BuildingPermitFormReportInterceptor {
+	
+	@DataContext("building_permit_payment")
+	def pmtEm;
+
+	@DataContext("building_permit_rpu")
+	def rpuEm;
+
+	@DataContext("vw_building_permit")
+	def permitEm;
+
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@DataContext("sys_signature")
+	def sigEm;
+
+	@Service("FormReportService")
+	def formReportSvc;
+
+	@Service(value="JasperReportService", connection="rpt")
+	def jasperSvc;
+
+	@DataContext("vw_building_permit_doc")
+	def vwSubdocEm;
+
+	String outputReportPath = "/apps/server/output/";
+
+	def findPermit( def id ) {
+		//building permit can be loaded using appid or objid(building permit)
+		def permit = permitEm.find( [objid: id] ).first();	
+		if(!permit) {
+			permit = permitEm.find( [appid: id ]).first();
+			if(!permit) throw new Exception("Permit not found");
+		}
+		return permit;
+	}
+
+	@After(pattern="FormReportService.getData", eval="#{ args[0].reportid == 'building_permit' }")
+	public void getBuildingPermitReport( def evt ) {
+		def p = evt.args[0];
+
+		def result = evt.result;
+		def id = p.parameters.objid;
+
+		def permit = findPermit( id );
+		if(!permit.template) {
+			def doctype = doctypeEm.find( [objid: 'BUILDING_PERMIT'] ).first();
+			permit.template = doctype.template;		
+		}
+		if(permit.appid) {
+			def pmt = pmtEm.find( [appid: permit.appid ]).where("voided = 0").first();
+			if( pmt ) {
+				permit.receiptno = pmt.refno;
+				permit.receiptdate = pmt.refdate;
+				permit.amount = pmt.amount;					
+			}
+		}
+		
+		if(permit.worktypes) {
+			permit.worktypes = permit.worktypes?.join(", ");
+		}	
+
+		if(permit.endorserid) {
+			permit.endorser = sigEm.find( [objid: permit.endorserid ]).first();
+		}
+		if(permit.approverid) {
+			permit.approver = sigEm.find( [objid: permit.approverid]).first();
+		}
+		permit.rpus = rpuEm.find([appid: permit.appid ]).select( "tdno,taxclearanceid,truecopycertid" ).list();
+		result.data = permit;
+	}	
+
+	@Before(pattern="JasperEmailQueueService.send", eval="#{args[0].reportid == 'building_permit' }")
+	public void beforeSendEmailQueue( def evt ) {
+		def p = evt.args[0];
+		def pmt = findPermit( p.refid );
+		p.to = pmt.contact.email;
+		p.info = pmt;
+		p.connection = "obo-email-server";
+	}
+
+  	@Before(pattern="JasperReportEmailService.send", eval="#{ args[0].reportid == 'building_permit' }", index=-10000)
+    public void beforeSendEmail(def evt) {
+        def o = evt.args[0];
+        def refid = o.refid;
+        def permit = formReportSvc.getData( [reportid:"building_permit", parameters:[objid:refid] ] )?.data;
+        o.attachments = [
+            [ reportid: o.reportid, data: permit, title: "BuildingPermit.pdf"],
+            [ reportid: "building_permit_signage", parameters: [objid:refid], title: "ConstructionSignage.pdf" ] 
+        ];
+
+        //load accompanying subdocuments
+        def subdocs = vwSubdocEm.find( [appid: permit.appid ] ).where( "doctype.issuetype = 2 ").list();
+        subdocs.each {
+        	o.attachments << [ reportid: "building_permit_doc", parameters: [objid: it.objid], title: it.doctypeid + ".pdf" ];
+        }
+
+        permit.rpus.each {
+        	def res = jasperSvc.generateReport([reportid: "rpttaxclearance", refid: it.taxclearanceid] );
+        	o.attachments << [title: "TaxClearance_"+it.tdno+".pdf", filename:outputReportPath +res.tokenid + ".pdf" ];
+	        res = jasperSvc.generateReport([reportid: "tdtruecopy", refid: it.truecopycertid] );        	
+        	o.attachments << [title: "TrueCopyCert_"+it.tdno+".pdf", filename:outputReportPath+res.tokenid+".pdf" ];        	
+        } 
+    }  
+
+
+
+}

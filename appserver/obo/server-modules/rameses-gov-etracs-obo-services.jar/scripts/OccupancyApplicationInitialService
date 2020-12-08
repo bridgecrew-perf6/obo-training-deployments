@@ -1,0 +1,119 @@
+import com.rameses.annotations.*;
+
+class OccupancyApplicationInitialService {
+	
+	@DataContext("occupancy_permit")
+	def appEm;
+
+	@DataContext("occupancy_permit_entity")
+	def entityEm;
+
+	@DataContext("occupancy_permit_professional")
+	def professionalEm;
+
+	@DataContext("occupancy_permit_requirement")
+	def reqEm;
+
+	@DataContext("obo_requirement_type")
+	def reqTypeEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@Service(value="obo/OnlineOccupancyPermitDownloadService", connection="cloud-server")
+    def cloudBldgSvc;
+
+    @Service( "BuildingPermitService" )
+    def bldgPermitSvc;
+
+	@Service("OboConstructionCostRuleService")
+	def costSvc;
+
+    @Env
+    def env;
+
+    @ProxyMethod
+    public def getApplication( def o  ) {
+    	return cloudBldgSvc.getDownloadInfo( [appid: o.appid, orgcode: env.ORGID ] );
+    }
+
+	@ProxyMethod
+	public def create( def app ) {
+		def u = [:];
+		u.applicantid = app.remove("applicantid");
+		u.profarchitectid = app.remove("profarchitectid");
+		u.profcivilid = app.remove("profcivilid");
+		u.profelectricalid = app.remove("profelectricalid");
+		u.profmechanicalid = app.remove("profmechanicalid");
+		u.profsanitaryid = app.remove("profsanitaryid");
+		u.profplumbingid = app.remove("profplumbingid");
+		u.profelectronicid = app.remove("profelectronicid");
+		u.profinteriorid = app.remove("profinteriorid");
+
+		u.supervisorelectricalid = app.remove("supervisorelectricalid");
+		u.supervisormechanicalid = app.remove("supervisormechanicalid");
+		u.supervisorsanitaryid = app.remove("supervisorsanitaryid");
+		u.supervisorplumbingid = app.remove("supervisorplumbingid");
+		u.supervisorelectronicid = app.remove("supervisorelectronicid");
+		u.supervisorinteriorid = app.remove("supervisorinteriorid");
+		u.supervisorid = app.remove("supervisorid");
+		u.contractorid = app.remove("contractorid");
+
+		app.bldgpermitid = app.bldgpermit.objid;
+		if(!app.bldgpermitid) throw new Exception("Building permit is required");
+
+		app.occupancytypeid = app.bldgpermit.occupancytypeid;
+		if(!app.occupancytypeid ) throw new Exception("occupancy type is required");
+
+		app.actualprojectcost = app.totalmaterialcost + app.totaldirectlaborcost + app.totalequipmentcost + app.totalothercost;
+
+		def newapp = appEm.create( app );
+		app.entities.each {
+			it.appid = newapp.objid;
+			entityEm.create( it );
+		}
+		app.professionals.each {
+			it.appid = newapp.objid;
+			it.entity = [objid: it.entityid ];
+			professionalEm.create( it );
+		}
+
+		def param = [:];
+		param.app = [apptype:app.apptype, totalfloorarea:app.actualtotalfloorarea];
+		param.occupancytype = app.occupancytype;
+		def cost = costSvc.calc( param );
+
+		
+
+		appEm.find( [objid: newapp.objid ] ).update( u );
+		
+		app = newapp;
+		def dt = dateSvc.getServerDate();
+		//update the requirements
+		def reqTypes = reqTypeEm.where("permittype = 'occupancy_permit' ").list();
+		reqTypes.each {
+			def r = [:];
+			r.appid = app.objid;
+			r.state = 0;
+			r.typeid = it.objid;
+			r.type = [objid: it.objid];
+			reqEm.create( r );
+		}
+
+		//fire the workflow to start the process
+		def p = [:];
+		p.processname = 'occupancy_permit';
+		p.assignee = [objid:env.USERID, name:env.FULLNAME];	
+		p.refid = app.objid;
+		p.startdate = dt;
+		p.info = app;
+		wfSvc.start(p);	
+
+		return newapp;
+	}
+
+	
+}

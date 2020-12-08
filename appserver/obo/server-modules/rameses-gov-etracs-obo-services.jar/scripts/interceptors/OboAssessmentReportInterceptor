@@ -1,0 +1,70 @@
+import com.rameses.annotations.*; 
+
+class OboAssessmentReportInterceptor {
+	
+	@DataContext(dynamic=true)
+	def dynEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@After(pattern="FormReportService.getData", eval="#{ args[0].reportid.matches('.*_assessment') }")
+	public void getOboAssessmentReport( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def reportid = p.reportid;
+		def objid = p.parameters.objid;
+		if(!objid) throw new Exception("objid is required in assessment report")
+
+		def appEm, feeEm, permitType;
+		if( reportid.startsWith("building")) {
+			appEm = dynEm.lookup("vw_building_permit");
+			feeEm = dynEm.lookup("building_permit_fee");
+			permitType = "BUILDING PERMIT";
+		}
+		else {
+			appEm = dynEm.lookup("vw_occupancy_permit");
+			feeEm = dynEm.lookup("occupancy_permit_fee");
+			permitType = "OCCUPANCY PERMIT";			
+		}
+
+		def data = appEm.find( [objid: objid ]).first();
+		data.permittype =  permitType ;
+		data.items = feeEm.getCategorizedFees( [appid: objid ] );
+		data.dtfiled = dateSvc.getServerDate();
+		result.data = data;
+	}	
+
+
+	@Before(pattern="JasperEmailQueueService.send", eval="#{ args[0].reportid.matches('.*_assessment') }")
+	public void beforeSendEmail( def evt ) {
+		def p = evt.args[0];
+		def reportid = p.reportid;
+		def appEm;
+		if( reportid.startsWith("building")) {
+			appEm = dynEm.lookup("vw_building_permit");
+		}
+		else {
+			appEm = dynEm.lookup("vw_occupancy_permit");
+		}
+		def ea = appEm.find( [objid: p.refid ] ).first();
+		p.to = ea.contact.email;
+		p.info = ea;
+	}
+
+	@Before(pattern="JasperReportEmailService.send", eval="#{ args[0].reportid.matches('.*_assessment') }", index=-10000)
+    public void emailAssessment(def evt) {
+        def o = evt.args[0];
+        def refid = o.refid;
+        o.attachments = [
+            [ title: "OrderOfPayment.pdf", reportid: o.reportid, parameters: [objid: refid ], 
+            	template: "reports/obo/assessment" ]
+        ];
+        o.to = o.to;
+        o.subject = o.subject;
+        o.message = o.message;
+        o.connection = "obo-email-server";
+    }   
+
+
+}

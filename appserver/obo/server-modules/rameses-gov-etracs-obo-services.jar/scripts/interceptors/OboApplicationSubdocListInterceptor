@@ -1,0 +1,41 @@
+import com.rameses.annotations.*; 
+
+class OboApplicationSubdocListInterceptor { 
+
+	@After(pattern="QueryService.getNodeList", eval="#{args[0]._schemaname.matches('.*_permit_doc') }")
+	public void getNodeList(def evt) {
+		def result = evt.result;
+		result << [title: "For Issuance", id: 1 ];
+		result << [title: "Unreleased", id: 2 ];
+		result << [title: "Released", id: 3 ];
+	}
+
+	@Before(pattern="QueryService.getList", eval="#{ args[0]._schemaname.matches('.*_permit_doc') }")
+	public void loadList(def evt) {
+		def o = evt.args[0];
+		//o.debug = true;
+		if( !o.node?.id ) return;
+
+		def str;
+		def m = [:]
+		if(o.node.id == 1) {
+			str = " controlid IS NULL AND app.task.state = 'releasing' "
+		}
+		else if(o.node.id == 2) {
+			str = " NOT(controlid IS NULL) AND app.task.state = 'releasing' "			
+		}
+		else {
+			str = " app.task.state = 'end' "
+		}
+
+		//add to first position of where
+		if( o.where ) {
+			o.where[0] = str + " AND " + o.where[0];	
+			o.where[1].putAll( m );
+		}
+		else {
+			o.where = [str, m];
+		}
+	}
+
+} 

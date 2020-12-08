@@ -1,0 +1,20 @@
+<schema>
+	<element tablename="vw_occupancy_permit_fee">
+		<field name="objid" primary="true" prefix="OCCFEE"/>
+		<field name="appid" required="true" />
+
+		<!-- parent here is the subdoc. it can be null -->
+		<field name="parentid" />
+		<field name="doctypeid" />
+
+		<field name="remarks" />
+		<field name="amount" required="true" />
+		<field name="amtpaid" required="true" />
+		<field name="balance"  expr="amount-amtpaid"/>
+
+		<complex name="item" ref="obo_itemaccount" jointype="many-to-one" required="true">
+			<key field="itemid" target="objid" />
+		</complex>	
+
+	</element>
+</schema>	

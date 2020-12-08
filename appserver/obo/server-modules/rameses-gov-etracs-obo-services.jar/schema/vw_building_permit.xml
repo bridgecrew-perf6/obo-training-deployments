@@ -1,0 +1,88 @@
+<schema>
+	<element tablename="vw_building_permit">
+		<field name="objid" primary="true"/>
+		<field name="appno" searchable="true" indexed="true"/>
+		<field name="apptype" />
+		<field name="appdate" />
+
+		<complex name="applicant" ref="building_permit_entity" jointype="many-to-one">
+			<key field="applicantid" target="objid" />
+		</complex>
+
+		<field name="applicant_name" caption="Applicant" searchable="true"  />
+		<field name="orgcode" />
+		<field name="trackingno" searchable="true" indexed="true"/>
+		
+		<field name="contact_name" />
+		<field name="contact_detail" />
+		<field name="contact_email" />
+		<field name="contact_mobileno" />
+		<field name="applicantid" />
+		<field name="description" />
+		<field name="title" searchable="true" indexed="true"/>
+		<field name="occupancytypeid" />
+		<field name="numunits" />
+		<field name="fixedcost" type="decimal"/>
+		<field name="projectcost"  type="decimal"/>
+
+		<field name="dtproposedconstruction" />
+		<field name="dtexpectedcompletion" />
+		<field name="totalfloorarea" />
+		<field name="height" />
+		<field name="numfloors" />
+		<complex name="worktypes" serializer="default"/>
+
+		<field name="zoneclass_objid" />
+		<field name="zoneclass_title" />
+		<field name="zone" />
+
+		<field name="location_unitno" />
+		<field name="location_bldgno" />
+		<field name="location_bldgname" />
+		<field name="location_subdivision" />
+		<field name="location_lotno" />
+		<field name="location_blockno" />
+		<field name="location_street" />
+		<field name="location_barangay_name" />
+		<field name="location_text" />
+
+		<field name="taskid" />
+		<field name="occupancytype_objid" />
+		<field name="occupancytype_title" />
+		<field name="occupancytype_division_objid" />
+		<field name="occupancytype_division_title" />
+		<field name="occupancytype_group_objid" />
+		<field name="occupancytype_group_title" />
+		<field name="task_state" />
+		<field name="task_dtcreated" />
+		<field name="task_startdate" />
+		<field name="task_enddate" />
+		<field name="task_assignee_objid" />
+		<field name="task_assignee_name" />
+		<field name="task_actor_objid" />
+		<field name="task_actor_name" />
+		<field name="task_title" />
+		<field name="task_tracktime" />
+		<field name="txnmode" />
+		
+		<complex name="supervisor" ref="obo_professional_info" jointype="many-to-one" required="false">
+			<key field="supervisorid" target="objid" />
+		</complex> 
+
+		<field name="controlid" />
+		<field name="controlno" />
+		<field name="dtissued" />
+		<field name="expirydate" />
+		<field name="issuedby_name" />
+		<field name="approverid" />
+		<field name="endorserid" />		
+		<field name="template" />
+		<field name="reportheader" />
+		<field name="txntype" />
+		<field name="amount" type="decimal"/>
+
+	</element>
+</schema>	
+
+
+

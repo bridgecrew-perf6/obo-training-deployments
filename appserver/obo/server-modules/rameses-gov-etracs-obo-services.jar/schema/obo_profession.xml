@@ -1,0 +1,8 @@
+<schema>
+	<element tablename="obo_profession">
+		<field name="name" primary="true" visible="true"  />
+		<field name="title" />
+	</element>
+</schema>
+		
+

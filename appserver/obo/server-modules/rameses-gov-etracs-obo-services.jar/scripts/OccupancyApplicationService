@@ -1,0 +1,37 @@
+import com.rameses.annotations.*;
+
+class OccupancyApplicationService {
+	
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("ControlnoGeneratorService")
+	def controlNoSvc;
+
+	@Service("Var")
+	def sysvar;
+
+	@DataContext("occupancy_permit")
+	def appEm;
+
+	@Env
+	def env;
+
+	@ProxyMethod
+	public def generateAppNo(def o ) {
+		def pattern = sysvar.get( "occupancy_permit_appno" );
+		if(!pattern) throw new Exception("Please define occupancy_permit_appno entry in sys_var. Ex. OCC-[yyyyMM]-[%05d]");
+		def appno = controlNoSvc.getNextNo( pattern );
+		if( o.appid ) {
+			def u = [:];
+			u.appdate = dateSvc.getServerDate();
+			u.appno = appno;
+			appEm.find( [objid: o.appid ] ).update( u );
+		}		
+		return appno;
+	} 
+
+
+
+}

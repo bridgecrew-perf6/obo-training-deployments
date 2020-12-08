@@ -1,0 +1,38 @@
+<schema>
+	<element tablename="building_permit_doc">
+		<field name="objid" primary="true" prefix="BASUBDOC"/>
+		<field name="appid" required="true"/>
+
+		<!-- 0-pending  1-for issuance -->
+		<field name="state" required="true" type="integer"/>
+		<field name="contractorname"/>
+
+		<complex name="doctype" ref="obo_doctype" jointype="many-to-one" required="false">
+			<key field="doctypeid" target="objid" />
+		</complex>  
+
+		<complex name="designprofessional" ref="obo_professional" jointype="many-to-one" required="false">
+			<key field="designprofessionalid" target="objid" />
+		</complex>  
+		<complex name="supervisor" ref="obo_professional" jointype="many-to-one"  required="false">
+			<key field="supervisorid" target="objid" />
+		</complex>  
+
+		<complex name="worktypes" type="list" serializer="default" required="false"/>
+		
+		<field name="remarks"/>
+		<field name="occupancytypeid" />
+
+		<!-- copied from doctype -->
+		<field name="amount" type="decimal"/>
+		<field name="controlid" />
+			
+		<!-- project cost and  -->	
+		<field name="projectcost" type="decimal"/>
+		<field name="equipmentcost" type="decimal"/>
+
+		
+
+	</element>
+</schema>
+

@@ -1,0 +1,79 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+import obo.facts.*;
+import java.text.*;
+import enterprise.utils.*;
+
+class OboApplicationChecklistService {
+	
+	@DataContext(dynamic=true)
+	def db;
+
+	@Env
+	def env;
+
+	@ProxyMethod
+	public def updateItem( def o ) {
+		if(!o.objid ) throw new Exception("specify objid");
+		if(!o.values ) throw new Exception("specify values");
+		def itemEm = db.lookup( o._schemaname );
+		itemEm.find( [objid: o.objid]).update( [values: o.values]);
+	}
+
+	@ProxyMethod
+	public void saveItems( def o ) {
+		if(!o.objid) throw new Exception("objid is required");
+		if(!o.items) throw new Exception("please specify items");
+		def itemEm = db.lookup( o._schemaname );
+		o.items.each {
+			if(!itemEm.find( [parentid: o.objid, typeid: it.objid]).exists()) {
+				def m =[:];
+				m.parentid = o.objid;
+				m.typeid = it.objid;
+				m.values = [];
+				m.type = [objid: it.objid ];
+				itemEm.create( m );
+			}
+		}
+	}
+	
+	@ProxyMethod
+	public def removeItems( def o ) {
+		if(!o.items) throw new Exception("please specify items");
+		def itemEm = db.lookup( o._schemaname );
+		o.items.each {
+			itemEm.find( [objid: it.objid ] ).delete();
+		}
+	}
+
+	@ProxyMethod
+	public def getList( o ) {
+		if(!o.objid) throw new Exception("objid is required");
+		def itemEm = db.lookup( o._schemaname );
+
+		def list = itemEm.find( [parentid: o.objid] ).list();
+		def result = [];
+		list.each {
+			def m = [:];
+			m.objid = it.objid;
+			m.template = it.type.title;
+			m.category = it.type.category;
+			m.params = it.type.params;
+			m.typeid = it.typeid;
+			m.indexno = it.type.indexno;
+			m.values = it.values;
+			if( it.values ) {
+				Object[] ov = it.values;
+				m.particulars = MessageFormat.format( m.template, ov );
+			}
+			else {
+				m.particulars = m.template;
+			}
+			result << m;
+		}
+		return result.sort{ it.typeid };
+	}
+
+	
+}

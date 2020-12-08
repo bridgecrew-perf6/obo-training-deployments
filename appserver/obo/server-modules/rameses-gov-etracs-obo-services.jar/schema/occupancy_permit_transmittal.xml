@@ -1,0 +1,20 @@
+<schema>
+	<element tablename="occupancy_permit_transmittal">
+		<field name="objid" primary="true" visible="true"/>
+		<field name="appid" required="true" />
+		<field name="state" required="true" type="integer" />		
+		<field name="type" required="true" />
+		<field name="taskid" />
+		<field name="dtcreated" required="true" />
+		<field name="createdby_objid" required="true" />
+		<field name="createdby_name" required="true" />
+
+		<field name="template"/>
+		<field name="endorserid" />
+		<field name="approverid" />
+		<field name="reportheader" />
+		
+	</element>
+</schema>
+
+

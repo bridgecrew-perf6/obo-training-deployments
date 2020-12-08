@@ -1,0 +1,24 @@
+import com.rameses.annotations.*;
+
+class OccupancyInspectionRpuIssuanceInterceptor {
+	
+	@DataContext("occupancy_rpu")
+	def occRpu;
+
+	@Service(value="RptOboPluginService", connection="rpt")
+	def rptSvc;
+
+	@After(pattern="OboIssuanceService.create", eval="#{args[0].doctypeid == 'OCCUPANCY_PERMIT' }" ) 
+	public void updateFassAfterPermitIssuance( def evt ) {
+		def a = evt.args[0];
+		def res = evt.result;
+		def rpu = occRpu.find( [appid: a.appid ] ).first();
+		if( rpu?.faasid ) {
+			def m = [faasid: rpu.faasid, permitno: res.controlno, permitdtissued: res.dtissued] 
+			rptSvc.updateOccupancy( m );
+			occRpu.find( [objid: rpu.objid] ).update([state: 2]);			
+		}
+	}
+
+	
+}

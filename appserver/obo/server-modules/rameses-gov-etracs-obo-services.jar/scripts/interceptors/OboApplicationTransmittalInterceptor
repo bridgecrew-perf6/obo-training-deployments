@@ -1,0 +1,126 @@
+import com.rameses.annotations.*; 
+
+class OboApplicationTransmittalInterceptor {
+	
+	@DataContext(dynamic=true)
+	def db;
+
+	@DataContext("sys_signature")
+	def sigEm;
+	
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@After(pattern="FormReportService.getData", eval="#{ args[0].reportid.matches('.*_transmittal') }", index=0 )
+	public void getTransmittalReport( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def transmittalid = p.parameters.objid;
+		if(!transmittalid) throw new Exception("objid is required in requirement checklist report")
+
+		def apptype = (p.reportid.startsWith("building")) ? "building" : "occupancy"; 
+		def permitType = apptype.toUpperCase() + " PERMIT";
+
+		def transmittalName = apptype + "_permit_transmittal";
+		def transmittalEm = db.lookup( transmittalName );
+		def t = transmittalEm.find([objid: transmittalid]).first();
+		if(!t) throw new Exception("Transmittal " + transmittalid + " not found ");
+
+		def items, doctype;
+		def type = t.type;
+		if(type == "requirement") {
+			def itemDb = db.lookup( apptype + "_permit_requirement" ); 
+			items = itemDb.find( [transmittalid : t.objid ] ).orderBy("type.sortorder").list();
+			doctype = doctypeEm.find( [objid: apptype.toUpperCase() + "_PERMIT_REQUIREMENT_TRANSMITTAL"] ).first();
+		}
+		else {
+			def itemName;
+			if(apptype == "building") {
+				itemName = "building_evaluation_finding"; 
+				doctype = doctypeEm.find( [objid: type.replace("-", "_").toUpperCase() + "_TRANSMITTAL"] ).first();
+			}
+			else {
+				itemName = "occupancy_inspection_finding"; 
+				doctype = doctypeEm.find( [objid: "OCCUPANCY_INSPECTION_TRANSMITTAL"] ).first();
+			}
+			def itemDb =  db.lookup( itemName );
+			items = itemDb.find( [transmittalid : t.objid ] ).orderBy("type.sortorder").list();
+			items.each {
+				if(it.attachment ) {
+					it.attachment = "image:" + it.attachment;
+				};
+				it.section = [type: [title: it.parent.type.title ]];
+			}
+		}
+
+		def appEm = db.lookup( "vw_" + apptype + "_permit" );
+		def ea = appEm.find( [objid: t.appid ] ).first();
+		ea.dtfiled = t.dtcreated;
+		ea.receiver = t.createdby;
+		ea.transmittalno = t.objid;
+		ea.transmittaltype = t.type;
+		ea.permittype = permitType;
+		ea.items = items;
+		ea.endorserid = (t.endorserid) ? t.endorserid : doctype.endorserid;
+		ea.approverid = (t.approverid) ? t.approverid : doctype.approverid;
+		ea.template = (t.template) ? t.template : doctype.template;
+		ea.reportheader = (t.reportheader)? t.reportheader : doctype.reportheader;
+
+		//apply signatories
+		if(ea.endorserid) {
+			ea.endorser = sigEm.find( [objid: ea.endorserid ]).first();
+		}
+		if(ea.approverid) {
+			ea.approver = sigEm.find( [objid: ea.approverid]).first();
+		}
+		result.data = ea;
+	}	
+
+	@Before(pattern="JasperEmailQueueService.send", eval="#{args[0].reportid?.matches('.*_transmittal') }")
+	public void beforeSendEmail( def evt ) {
+		def p = evt.args[0];
+		def appEm, transmittalEm;
+		if( p.reportid.startsWith("building") ) {
+			appEm = db.lookup( "vw_building_permit" );
+			transmittalEm = db.lookup( "building_permit_transmittal" );
+			if( p.reportid.contains("requirement") ) {
+				p.reportid = "building_requirement_transmittal";
+			}
+			else {
+				p.reportid = "building_finding_transmittal";
+			}
+		}
+		else {
+			appEm = db.lookup( "vw_occupancy_permit" );
+			transmittalEm = db.lookup( "occupancy_permit_transmittal" );
+			if( p.reportid.contains("requirement") ) {
+				p.reportid = "occupancy_requirement_transmittal";
+			}
+			else {
+				p.reportid = "occupancy_finding_transmittal";
+			}
+		}
+		def t = transmittalEm.find([objid: p.refid ]).select("appid").first();
+		def ea = appEm.find( [objid: t.appid ] ).first();
+		p.to = ea.contact.email;
+		p.info = ea;
+	}
+
+  	@Before(pattern="JasperReportEmailService.send", eval="#{ args[0].reportid.matches('.*_transmittal') }", index=-10000)
+    public void emailTransmittal(def evt) {
+        def o = evt.args[0];
+        def refid = o.refid;
+        o.attachments = [
+            [ title: "Transmittal.pdf", 
+                reportid: o.reportid, 
+                parameters: [objid: refid ]
+            ]
+        ];
+        o.to = o.to;
+        o.subject = o.subject;
+        o.message = o.message;
+        o.connection = "obo-email-server";
+    }  
+
+
+}

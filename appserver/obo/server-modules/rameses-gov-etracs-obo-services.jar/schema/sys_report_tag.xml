@@ -1,0 +1,7 @@
+<schema>
+	<element tablename="sys_report_tag">
+		<field name="objid" primary="true" searchable="true" visible="true"/>
+		<field name="description" />
+	</element>
+</schema>
+

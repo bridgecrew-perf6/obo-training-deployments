@@ -1,0 +1,13 @@
+<schema>
+	<element tablename="occupancy_rpu">
+		<field name="objid" primary="true" prefix="OCCRPU"/>
+		<field name="state" type="integer" required="true"/>
+		<field name="dtcreated" type="date" required="true"/>
+
+		<field name="appid" required="true"/>
+		<field name="txnmode"/>
+		<field name="faasid" />
+		<field name="tdno" />
+	</element>
+</schema>
+		

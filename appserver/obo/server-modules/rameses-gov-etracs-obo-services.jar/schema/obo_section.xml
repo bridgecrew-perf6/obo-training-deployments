@@ -1,0 +1,8 @@
+<schema>
+	<element tablename="obo_section">
+		<field name="objid" primary="true" visible="true" searchable="true"/>
+		<field name="title" searchable="true" caption="Section"/>
+		<field name="org_objid" caption="Org ID"/>
+		<field name="org_name" caption="Org Name"/>
+	</element>
+</schema>

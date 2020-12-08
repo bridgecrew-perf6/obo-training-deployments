@@ -1,0 +1,36 @@
+import com.rameses.annotations.*; 
+
+class OccupancyRpuListInterceptor { 
+
+	@After(pattern="QueryService.getNodeList", eval="#{args[0]._schemaname == 'vw_occupancy_rpu' }")
+	public void getNodeList(def evt) {
+		def result = evt.result;
+		result << [title: "Pending", state: 0 ];		
+		result << [title: "Processing", state: 1 ];		
+		result << [title: "Completed", state: 2 ];				
+	}
+
+	@Before(pattern="QueryService.getList", eval="#{args[0]._schemaname == 'vw_occupancy_rpu' }")
+	public void loadList(def evt) {
+		def o = evt.args[0];
+		if( o.node?.state == null ) return;
+
+		//o.debug = true;
+		//o._debug = true;
+
+		def str = " state = :state ";
+		def m = [state: o.node.state ];
+
+		//add to first position of where
+		if( o.where ) {
+			o.where[0] = str + " AND " + o.where[0];	
+			o.where[1].putAll( m );
+		}
+		else {
+			o.where = [str, m];
+		}
+	}
+
+
+
+} 

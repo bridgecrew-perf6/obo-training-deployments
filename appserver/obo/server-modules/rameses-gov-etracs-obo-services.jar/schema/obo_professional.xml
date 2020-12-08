@@ -1,0 +1,11 @@
+<schema>
+	<element tablename="obo_professional">
+		<field name="objid" primary="true" prefix="OBOPROF" />
+		<field name="prcno" />
+		<field name="profession" />
+		<field name="infoid" />
+	</element>
+</schema>		
+
+
+

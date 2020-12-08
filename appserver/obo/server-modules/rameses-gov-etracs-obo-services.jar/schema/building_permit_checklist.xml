@@ -1,0 +1,10 @@
+<schema>
+	<element tablename="building_permit_checklist">
+		<field name="objid" primary="true" prefix="BAPPCHKLISTITM"/>
+		<field name="parentid" />
+		<complex name="values" serializer="default" required="false"/>
+		<complex name="type" ref="obo_checklist_master" jointype="many-to-one" required="true">
+			<key field="typeid" target="objid" />
+		</complex> 
+	</element>
+</schema>

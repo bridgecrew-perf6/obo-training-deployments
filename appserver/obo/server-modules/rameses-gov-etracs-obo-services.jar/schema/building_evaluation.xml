@@ -1,0 +1,8 @@
+<schema>
+	<element tablename="building_evaluation">
+		<field name="objid" primary="true" prefix="OBOBPEVAL"/>
+		<field name="appid" />
+		<field name="typeid" />
+		<field name="taskid" />
+	</element>
+</schema>

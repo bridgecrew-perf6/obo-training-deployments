@@ -1,0 +1,165 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+import obo.facts.*;
+import java.text.*;
+import treasury.utils.*;
+import treasury.facts.*;
+
+class BuildingApplicationPersistenceService {
+	
+	@DataContext("building_permit")
+	def appEm;
+
+	@DataContext("building_permit_task")
+	def appTaskEm;
+
+	@DataContext("building_permit")
+	def permitEm;
+
+	@DataContext("vw_building_permit")
+	def vwAppEm;
+
+	@DataContext("building_permit_entity")
+	def entityEm;
+
+	@DataContext("building_permit_payment")
+	def paymentEm;
+
+	@DataContext("building_permit_doc")
+	def subdocEm;
+
+	@DataContext("building_permit_requirement")
+	def reqEm;
+
+	@DataContext("obo_requirement_type")
+	def reqTypeEm;
+
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@Service("OboConstructionCostRuleService")
+	def costSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@Service("BuildingApplicationService")
+	def appSvc;
+
+    @Env
+    def env;
+
+ 	@ProxyMethod
+	public def create( def app ) {
+		def dt = dateSvc.getServerDate();
+		if(!app.appno) {
+			app.appno = appSvc.generateAppNo([:]);
+		}
+		//check first all professionals if exist in the obo_professional table
+		app.objid = "BAPP" + new UID();
+		app.occupancytypeid = app.occupancytype?.objid;
+		app.zoneclassid = app.zoneclass?.objid;
+
+		if( app.supervisor ) {
+			app.supervisorid = app.supervisor.objid;
+		}
+
+		//remove application before so it can be replaced
+		def applicant = app.remove("applicant");
+		app.txnmode = "CAPTURE";
+		app.createdby = [objid: env.USERID, name: env.FULLNAME];
+		app.dtcreated = dt;
+
+		appEm.create( app );
+
+		//save applicant
+		applicant.appid = app.objid;
+		applicant = entityEm.create( applicant );
+
+		//calculate the cost first before receiving
+		def param = [:];
+		param.app = [apptype:app.apptype, totalfloorarea:app.totalfloorarea];
+		param.occupancytype = app.occupancytype;
+		def cost = costSvc.calc( param );
+
+		//update applicant, cost and appid for info
+		def u = [:];
+		u.applicantid = applicant.objid;
+		u.fixedcost = cost; 
+		appEm.find( [objid: app.objid ] ).update( u );
+
+		if( app.permitissued == true ) {
+			def doctype = doctypeEm.find( [objid: "BUILDING_PERMIT"] ).first();
+			def bp = [:];	
+			bp.appid = app.objid;
+			bp.controlno = app.permitno;
+			bp.dtissued = app.permitdtissued;
+			bp.expirydate = app.permitexpirydate;
+			bp.issuedby = [ objid:env.USERID, name:env.FULLNAME];
+			bp.state = 3;
+			bp.template = doctype.template;
+			bp.endorserid = doctype.endorserid;
+			bp.approverid = doctype.approverid;
+			bp.reportheader = doctype.reportheader;
+
+			bp = permitEm.create( bp );
+			//add end application task
+			def atask = [:];
+			atask.refid = app.objid;
+			atask.state =  "end";
+			atask.dtcreated = dateSvc.getServerDate();
+			atask = appTaskEm.create( atask );
+			appEm.find([objid:app.objid]).update( [ taskid: atask.taskid, controlid: bp.objid ] );
+
+			//capture payment
+			def pmt = [:];
+			pmt.appid = app.objid;
+			pmt.refno = app.receiptno;
+			pmt.refdate = app.receiptdate;
+			pmt.amount = app.amtpaid;
+			pmt.reftype = "cashreceipt";
+			pmt.voided = 0;
+			paymentEm.create( pmt );
+		}
+		else {
+			//save all documents that are auto create that does not exist above
+			subdocEm.getSubdocsToAutoCreate( [apptype:'building', appid: app.objid ]).each {
+				def sd = [:];
+				sd.appid = app.objid;
+				sd.doctype = [objid: it.objid];
+				sd.amount = 0;
+				sd.state = 0;
+				subdocEm.create( sd );			
+			}
+
+			//update the requirements
+			def reqTypes = reqTypeEm.where("permittype = 'building_permit' ").list();
+			reqTypes.each {
+				def r = [:];
+				r.appid = app.objid;
+				r.state = 0;
+				r.typeid = it.objid;
+				r.type = [objid: it.objid];
+				reqEm.create( r );
+			}
+
+			//fire the workflow to start the process
+			def p = [:];
+			p.processname = 'building_permit';
+			p.refid = app.objid;
+			p.startdate = dt;
+			p.info = app;
+			p.assignee = [objid:env.USERID, name:env.FULLNAME];		
+			wfSvc.start(p);				
+		}
+
+		return [objid: app.objid];
+	}
+
+
+	
+}

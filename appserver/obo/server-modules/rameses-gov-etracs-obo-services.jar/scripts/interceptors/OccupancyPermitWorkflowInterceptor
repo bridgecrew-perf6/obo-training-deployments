@@ -1,0 +1,176 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+
+class OccupancyPermitWorkflowInterceptor {
+
+	@DataContext("occupancy_permit")
+	def appEm;
+
+	@DataContext("vw_occupancy_permit")
+	def vwAppEm;
+
+
+	@DataContext("occupancy_permit_fee")
+	def feeEm;
+
+	@DataContext("obo_control")
+	def issuanceEm;
+
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@DataContext("occupancy_permit_doc")
+	def subdocEm;
+
+	@DataContext("occupancy_rpu")
+	def rpuEm;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@Service("MenuNotificationService")
+    def notificationSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("JasperEmailQueueService")
+    def emailSvc;
+
+	@Service("OboRequirementService")
+	def reqSvc;
+
+	@Service("OboFindingService")
+	def findingSvc;
+
+    @Service("OboAppnoGeneratorService")
+	def appSvc;
+
+	@Service("OccupancyInspectionService")
+	def inspectionSvc;
+
+    // --- RECEIVING ---- //
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action=='send-for-requirement-verification' }") 
+	public void doActionBeforeReceiving( def evt ) {
+		def p = evt.args[0];
+		def app = vwAppEm.find( [objid: p.refid ]).first();
+		if(!app.txntype) throw new Exception("Transaction Type is required");
+	}
+
+    // --- REQUIREMENT VERIFICATION ---- //
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-requirement-revision' }") 
+	public void doActionAfterRequirementRevision( def evt ) {
+		def p = evt.args[0];
+		def transmittal = reqSvc.createTransmittal( [apptype: "occupancy_permit", appid:p.refid] );
+		emailSvc.send( [reportid:"occupancy_requirement_transmittal", refid: transmittal.objid ]);	
+	}
+
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname =='occupancy_permit' && args[0].action == 'approve-requirement' }")      
+	public void doRequirementValidation( def evt ) { 
+		def p = evt.args[0];
+		reqSvc.validateApproval( [apptype: "occupancy_permit", appid: p.refid ] );
+
+		//generate the app no here
+		def appno = appSvc.generate([apptype:"occupancy_permit"]);
+		appEm.find( [objid: p.refid ]).update( [appno: appno, appdate: dateSvc.getServerDate() ] );
+		//immediately email claim stub after
+		emailSvc.send( [reportid:"occupancy_permit_claimstub", refid:p.refid]);
+	}
+
+    // --- INSPECTION FINDING ---- //
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-finding-revision' }") 
+	public void sendInspectionFindingTransmittal( def evt ) {
+		def p = evt.args[0];
+		def r = evt.result;
+		def transmittal = findingSvc.createTransmittal( [apptype: "occupancy_permit", appid:p.refid, type: "occupancy-inspection" ] );
+		emailSvc.send( [reportid:"occupancy_finding_transmittal", refid:transmittal.objid ]);			
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && result.state == 'inspection' && args[0].action != 'reactivate' }") 
+	public void fireSectionInspections( def evt ) {
+		def p = evt.args[0];
+		def r = evt.result;
+		def tasks = inspectionSvc.startTasks( [appid: p.refid, state: r.state ] );
+		p._notificationlist = tasks.collect{ 'occupancy_inspection:' + it.toLowerCase() };
+
+		//fire also the assessor's inspection
+		def rpu = [:];
+		rpu.appid = p.refid;
+		rpu.state = 0;
+		rpu.dtcreated = dateSvc.getServerDate();
+		rpuEm.create( rpu );
+
+		//add to notification list;
+		p._notificationlist << "obo-rpt";
+		p._notificationlist << "occupancy_rpu";
+	}
+
+	//for-reactivation. check if there are evaluations where the task state is for-revision and reactivate each
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'reactivate' }" ) 
+	public void reactivateInspectionTasks( def evt ) {
+		def p = evt.args[0];
+		def tasks = inspectionSvc.reactivateTasks( [appid: p.refid, state: p.state ] );
+		p._notificationlist = tasks.collect{ 'occupancy_inspection:' + it.toLowerCase() };
+	}
+	
+	//check at least one fee
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-assessment-approval' }") 
+	public void doActionBeforeSendAssessmentForApproval( def evt ) {
+		def p = evt.args[0];
+		def c = feeEm.find( [appid: p.refid ]).select("c:{COUNT(*)}").where("parentid IS NULL").val();
+		if( c==null || c == 0 )
+			throw new Exception("There must be at least one fee");	
+		def list = subdocEm.getDocsThatRequireFees( [appid: p.refid ] );
+		if(list) {
+			throw new Exception("The ff. must have fees: \n" + list*.title.join("\n") );
+		}		
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'approve-assessment' }") 
+	public void doActionAfterApproveAssessment( def evt ) {
+		def p = evt.args[0];
+		//immediately send order of payment
+		emailSvc.send( [reportid:"occupancy_permit_assessment", refid:p.refid ]);			
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'post-payment' }" ) 
+	public void postPaymentTasks( def evt ) {
+		def p = evt.args[0];
+		def appid = p.refid;
+		def dt = dateSvc.getServerDate();
+
+		def docList = subdocEm.find( [appid: appid]).where("doctype.issuetype = 2 AND app.task.state = 'releasing' AND doctype.refdoc IS NULL").list()*.doctype?.objid;	
+		throw new Exception("post payment " + docList );
+
+		p._notificationlist = [];
+		docList.each {
+			p._notificationlist <<  'occupancy_permit_doc:' + it.toLowerCase();				
+		}
+	}
+
+	//this should fire after all the tasks have been saved
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0]._notificationlist!=null }", index=50000) 
+	public void notifyOtherTasks( def evt ) {
+		def p = evt.args[0];
+		notificationSvc.notify( p._notificationlist );
+	}
+
+	//release process. Make sure there is at least one occupancy_permit_issuance
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }", index=0 )
+	public void doActionBeforeRelease( def evt ) {
+		def p = evt.args[0];
+		def appid = p.refid;
+		def docList = subdocEm.find( [appid: appid]).where("controlid IS NULL").select("doctype.title").list();
+		if( docList ) {
+			throw new Exception("The ff. documents are not yet issued: " + docList*.doctype.title.join("/n") );
+		}		
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }", index=0 ) 
+	public void doActionAfterRelease( def evt ) {
+		def p = evt.args[0];
+		throw new Exception("releasing the building permit");
+	}
+
+
+}

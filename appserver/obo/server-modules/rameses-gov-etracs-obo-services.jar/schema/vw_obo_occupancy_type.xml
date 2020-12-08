@@ -1,0 +1,11 @@
+<schema>
+	<element tablename="vw_obo_occupancy_type">
+		<field name="objid"  primary="true"/>
+		<field name="divisionid" />
+		<field name="title" searchable="true" indexed="true"/>
+		<field name="division_objid" searchable="true" indexed="true"/>
+		<field name="division_title"  indexed="true"/>
+		<field name="group_objid" searchable="true" indexed="true"/>
+		<field name="group_title" indexed="true"/>
+	</element>
+</schema>	

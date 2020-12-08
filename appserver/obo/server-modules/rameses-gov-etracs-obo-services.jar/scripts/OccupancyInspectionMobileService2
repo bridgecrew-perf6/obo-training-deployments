@@ -1,0 +1,81 @@
+import com.rameses.annotations.*; 
+
+public class OccupancyInspectionMobileService2 {
+	
+	@DataContext("occupancy_inspection_finding")
+	def findingEm;
+
+	@DataContext("occupancy_inspection_type")
+	def inspTypeEm;
+
+	@Env
+	def env;
+
+	@ProxyMethod
+	public def download( def o ) {
+		def userid = o.userid;
+		def list = inspTypeEm.where("1=1").list();
+		return list;
+
+		def list = [];
+		list << [
+			appno: "OCC-01-011",
+			bldgpermit: [
+				permitno: "B-01-0001",
+				title: "2BR APARTMENT"
+				applicant: [ name: "FLORES, WORGIE" ] ,
+				occupancytype: [
+					division: [ objid: "B1"]
+				],	
+				projectcost: 200000000,
+				totalfloorarea: 300,
+				height: 100,
+				numunits: 1,
+				numfloors: 2,
+				location: [ text: "CAPITOL SITE CEBU CITY" ],
+			],
+			actualheight:10,
+			actualnumunits: 1,
+			actualnumfloors: 2,
+			actualtotalfloorarea: 300,
+			sections: [
+				[objid:'OCCSEC1281828128', typeid: "ELECTRICAL", 
+					info:[
+						[
+							name: 'TOTAL_CONNECTED_LOAD',
+							type: [type:'decimal', caption:'Total Connected Load'],
+							value: 2.0
+						],
+						[
+							name: 'ELECTRIC_METER',
+							type: [type:'integer', caption:'Electric Meters'],
+							value: 10
+						]	
+					],
+				]
+			]
+		]
+		return list;
+	}
+
+	@ProxyMethod
+	public def upload( def app ) {
+		def userid = o.userid;
+
+		app.sections.each { section->
+			println section.typeid,
+			sections.findings.each { fnd->
+				def f = [:];
+				f.appid = app.objid;
+				f.parentid = section.objid,
+				f.particulars = fnd.particulars,
+				f.image = fnd.image,
+				f.createdby = [objid:env.USERID, name:env.FULLNAME],
+			}
+		}
+		
+
+	}
+
+
+}

@@ -1,0 +1,9 @@
+<schema>
+	<element tablename="idtype">
+		<field name="name" primary="true" visible="true"  />
+		<field name="caption" />
+		<field name="title" />
+	</element>
+</schema>
+		
+

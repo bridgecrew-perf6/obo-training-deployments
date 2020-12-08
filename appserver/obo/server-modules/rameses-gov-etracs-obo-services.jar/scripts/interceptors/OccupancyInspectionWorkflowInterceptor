@@ -1,0 +1,96 @@
+import com.rameses.annotations.*;
+
+class OccupancyInspectionWorkflowInterceptor {
+	
+	@DataContext("occupancy_permit")
+	def aEm;
+
+	@DataContext("occupancy_inspection_finding")
+	def findingEm;
+
+	@DataContext("vw_occupancy_inspection")
+	def vwInspEm;
+
+	@DataContext("occupancy_inspection")
+	def inspEm;
+
+	@DataContext("occupancy_permit_fee")
+	def feeEm;
+
+	@DataContext("vw_occupancy_permit")
+	def appEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@DataContext("occupancy_inspection_type_role")
+	def inspTypeRoleEm;
+
+	@DataContext("occupancy_permit_doc")
+	def subdocEm;
+
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_inspection' && args[0].action == 'send-for-revision' }" ) 
+	public void doActionBeforeRevision( def evt ) {
+		def p = evt.args[0];
+		def c = findingEm.find([parentid: p.refid]).where("state = 2 AND supersederid IS NULL").select("c:{COUNT(*)}").val();
+		if( c == 0 ) throw new Exception("There must be at least one open finding");
+	}
+
+
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_inspection' && args[0].action == 'approve' }" ) 
+	public void doActionBeforeApprove( def evt ) {
+		def p = evt.args[0];
+		def c = findingEm.find([parentid: p.refid]).where("state = 2 AND supersederid IS NULL").select("c:{COUNT(*)}").val();
+		if( c > 0 ) throw new Exception("There must be no unresolved findings. Click on Send for Revision instead");
+	}
+
+	//release process. Ensure that all tasks are closed before firing main
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_inspection' && args[0].action.matches('send-for-revision|approve') }" ) 
+	public void doActionAfterApproveOrRevise( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def appid = vwInspEm.find( [objid: p.refid] ).select("appid").val();
+		def tlist = vwInspEm.find([appid:appid]).select("task.state").list();
+
+		def hasOpen = tlist.find{ !it.task.state.matches( "for-revision|end" ) };
+		if( hasOpen ) {
+			return;
+		}
+
+		//determine what action to fire in.  Check worfklow if for-revision it will go thru for revision.
+		boolean hasRevision = (tlist.find{ it.task.state == "for-revision" }!=null) ? true : false;
+		def app = appEm.find([objid:appid]).select("task.*").first();
+		def f = [:];
+		f.processname = 'occupancy_permit';
+		f.refid = appid;
+		f.startdate = dateSvc.getServerDate();
+		f.info = [ app: p.info ];
+		f.action = (hasRevision==true) ? 'send-for-verification' : 'approve-inspection';
+		f.taskid = app.taskid;
+		wfSvc.signal(f);	
+
+	}
+
+
+	/************************************************************
+	* Substitute roles
+	*************************************************************/
+	@After( pattern="WorkflowTaskService.(signal|start|findTask)", eval="#{ args[0].processname == 'occupancy_inspection' }" )
+	public void customizeRole(  def evt ) {
+		def r = evt.result;
+		//get the corrected roles for this
+		def typeid = vwInspEm.find( [objid: r.refid ] ).select("typeid").val();
+		def replaceRole = {state, itm->
+			def rol = inspTypeRoleEm.find( [typeid: typeid, state: state ] ).first();
+			if(rol) itm.role = rol.role;	
+		}
+		replaceRole( r.state, r );
+		r.transitions.each { tran ->
+			replaceRole( tran.to,  tran );
+		}
+	}
+	
+}

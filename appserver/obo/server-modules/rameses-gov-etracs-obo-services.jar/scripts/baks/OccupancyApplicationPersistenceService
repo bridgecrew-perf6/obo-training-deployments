@@ -1,0 +1,187 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+import obo.facts.*;
+import java.text.*;
+import treasury.utils.*;
+import treasury.facts.*;
+
+class OccupancyApplicationPersistenceService {
+	
+	@DataContext("vw_building_permit")
+	def bldgPermitEm;
+
+	@DataContext("occupancy_permit")
+	def appEm;
+
+	@DataContext("occupancy_permit_task")
+	def appTaskEm;
+
+	@DataContext("occupancy_permit")
+	def permitEm;
+
+	@DataContext("vw_occupancy_permit")
+	def vwAppEm;
+
+	@DataContext("occupancy_permit_entity")
+	def entityEm;
+
+	@DataContext("occupancy_permit_payment")
+	def paymentEm;
+
+	@DataContext("occupancy_permit_doc")
+	def subdocEm;
+
+	@DataContext("occupancy_permit_requirement")
+	def reqEm;
+
+	@DataContext("obo_requirement_type")
+	def reqTypeEm;
+
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@DataContext("occupancy_rpu")
+	def occRpuEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@Service("OccupancyApplicationService")
+	def appSvc;
+
+	@Service("OboConstructionCostRuleService")
+	def costSvc;
+
+    @Env
+    def env;
+
+    @ProxyMethod
+    public def findBldgPermit( def o ) {
+    	return bldgPermitEm.find( [controlno: o.controlno ] ).first();
+    }
+
+ 	@ProxyMethod
+	public def create( def app ) {
+		if( !app.actualprojectcost )
+			throw new Exception("Actual Project cost is required");
+		app.orgcode = env.ORGID;	
+
+		def dt = dateSvc.getServerDate();
+		if(!app.appno) {
+			app.appno = appSvc.generateAppNo([:]);
+		}
+		//check first all professionals if exist in the obo_professional table
+		app.objid = "OAPP" + new UID();
+		app.occupancytypeid = app.bldgpermit.occupancytype?.objid;
+
+		//remove application before so it can be replaced
+		def applicant = app.remove("applicant");
+		
+		app.txnmode = "CAPTURE";
+		app.createdby = [objid: env.USERID, name: env.FULLNAME];
+		app.dtcreated = dt;
+		app.actualprojectcost = app.totalmaterialcost + app.totaldirectlaborcost + app.totalequipmentcost + app.totalothercost;
+		appEm.create( app );
+
+		//save applicant
+		applicant.appid = app.objid;
+		applicant = entityEm.create( applicant );
+
+		//calculate the cost first before receiving
+		def param = [:];
+		param.app = [apptype:app.apptype, totalfloorarea:app.actualtotalfloorarea];
+		param.occupancytype = app.occupancytype;
+		def cost = costSvc.calc( param );
+
+		//update applicant, cost and appid for info
+		appEm.find( [objid: app.objid ] ).update( [applicantid: applicant.objid, actualfixedcost: cost] );
+
+		if( app.permitissued == true ) {
+			def doctype = doctypeEm.find( [objid: "OCCUPANCY_PERMIT"] ).first();
+			def bp = [:];	
+			bp.appid = app.objid;
+			bp.controlno = app.permitno;
+			bp.dtissued = app.permitdtissued;
+			bp.expirydate = app.permitexpirydate;
+			bp.issuedby = [ objid:env.USERID, name:env.FULLNAME];
+			bp.state = 3;
+			bp.template = doctype.template;
+			bp.endorserid = doctype.endorserid;
+			bp.approverid = doctype.approverid;
+			bp.reportheader = doctype.reportheader;
+
+			bp = permitEm.create( bp );
+			//add end application task
+			def atask = [:];
+			atask.refid = app.objid;
+			atask.state =  "end";
+			atask.dtcreated = dateSvc.getServerDate();
+			atask = appTaskEm.create( atask );
+			appEm.find([objid:app.objid]).update( [ taskid: atask.taskid, controlid: bp.objid ] );
+
+			//capture payment
+			def pmt = [:];
+			pmt.appid = app.objid;
+			pmt.refno = app.receiptno;
+			pmt.refdate = app.receiptdate;
+			pmt.amount = app.amtpaid;
+			pmt.reftype = "cashreceipt";
+			pmt.voided = 0;
+			paymentEm.create( pmt );
+
+			//also create the occupancy_rpu as CAPTURED
+			def c = [:];
+			c.appid = app.objid;
+			c.state = 0;
+			c.txnmode = "CAPTURED";
+			occRpuEm.create( c );
+		}
+		else {
+			//save all documents that are auto create that does not exist above
+			subdocEm.getSubdocsToAutoCreate( [apptype:'occupancy', appid: app.objid ]).each {
+				def sd = [:];
+				sd.appid = app.objid;
+				sd.doctype = [objid: it.objid];
+				sd.amount = 0;
+				sd.state = 0;
+				subdocEm.create( sd );			
+			}
+
+			//update the requirements
+			def reqTypes = reqTypeEm.where("permittype = 'occupancy_permit' ").list();
+			reqTypes.each {
+				def r = [:];
+				r.appid = app.objid;
+				r.state = 0;
+				r.typeid = it.objid;
+				r.type = [objid: it.objid];
+				reqEm.create( r );
+			}
+
+			//fire the workflow to start the process
+			def p = [:];
+			p.processname = 'occupancy_permit';
+			p.refid = app.objid;
+			p.startdate = dt;
+			p.info = app;
+			p.assignee = [objid:env.USERID, name:env.FULLNAME];		
+			wfSvc.start(p);				
+		}
+
+		return [objid: app.objid];
+	}
+
+	@ProxyMethod
+	public def update( def app ) {
+		app.occupancytypeid = app.occupancytype?.objid;
+		app = appEm.update( app );
+		return app;
+	}
+
+
+	
+}

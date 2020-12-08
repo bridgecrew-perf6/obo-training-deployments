@@ -1,0 +1,82 @@
+import com.rameses.annotations.*; 
+import java.rmi.server.*;
+
+/***********************************************************************************************************
+* This service is used for both  building and occupancy
+* building - building_permit_transmittal, building_permit_requirement, building_evaluation_finding
+* occupancy - occupancy_permit_transmittal, occupancy_permit_requirement, occupancy_evaluation_finding      
+************************************************************************************************************/
+class OboFindingService {
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("ControlnoGeneratorService")
+	def controlNoSvc;
+
+	@DataContext(dynamic=true)
+	def db;
+
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@Env
+	def env;
+
+	@ProxyMethod
+	public def createTransmittal( def o ) {
+		if(!o.appid) throw new Exception("appid is required in OboFindingService.createTransmittal");
+		if(!o.apptype) throw new Exception("apptype is required in OboFindingService.createTransmittal")
+		if(!o.type) throw new Exception("type is required in OboFindingService.createTransmittal")
+
+		def transmittalEm = db.lookup( o.apptype + "_transmittal");
+		def itemName;
+
+		if( o.apptype == "building_permit") {
+			if( !o.type.matches( "zoning-evaluation|trade-evaluation" ) ) 
+				throw new Exception("type must be any of the ff: zoning-evaluation,trade-evaluation" );	
+			itemName = "building_evaluation_finding";
+		}
+		else {
+			if( !o.type.matches( "occupancy-inspection" ) ) 
+				throw new Exception("type must be any of the ff: occupancy-inspection" );	
+			itemName = "occupancy_inspection_finding";
+		}
+
+		def	itemEm = db.lookup( itemName ); 
+		def c = itemEm.select("c:{COUNT(*)}").find([appid:o.appid]).where("supersederid IS NULL AND state=2 AND transmittalid IS NULL").val();
+		if( c<=0) throw new Exception("There must be at least one finding that needs to be transmitted");			
+	
+		def docid = o.type.toUpperCase().replace("-","_") + "_TRANSMITTAL";
+		def doc = doctypeEm.find( [objid: docid] ).first();		
+		if(!doc.controlnopattern) throw new Exception("Please define controlnopattern in " + docid );
+		def t = [:];
+		t.objid = controlNoSvc.getNextNo( doc.controlnopattern );
+		t.appid = o.appid;
+		t.type = o.type;
+		t.createdby = [objid: env.USERID, name: env.FULLNAME ];
+		t.dtcreated = dateSvc.getServerDate();
+		t.state = 0;
+		t.approverid = doc.approverid;
+		t.endorserid = doc.endorserid;	
+		t.template = doc.template;
+		t.reportheader = doc.reportheader;	
+		transmittalEm.create( t );
+		itemEm.find([appid: o.appid]).where("supersederid IS NULL AND state=2 AND transmittalid IS NULL").update( [transmittalid: t.objid] );
+		return t;	
+	}
+
+	@ProxyMethod
+	public void validateApproval( def o ) {
+		if(!o.appid) throw new Exception("appid is required in OboRequirementService.validateApproval");
+		if(!o.apptype) throw new Exception("Please include apptype in OboRequirementService.validateApproval")
+		def itemName = (o.apptype == "building_permit") ? "building_evaluation_finding" : "occupancy_inspection_finding";
+		def	findingEm = db.lookup( itemName ); 
+		//check if there are pending findings
+		def t = findingEm.find( [appid: o.appid] ).select("c:{COUNT(*)}").where("state=2 AND supersederid IS NULL").val();
+		if( t > 0) throw new Exception("There are unresolved findings. You need to send this for revision");
+	}
+
+
+
+}	

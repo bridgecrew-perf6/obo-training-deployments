@@ -1,0 +1,36 @@
+import com.rameses.annotations.*;
+
+class BuildingPermitService {
+	
+	@DataContext("vw_building_permit")
+	def vwPermitEm;
+
+	@DataContext("building_permit_entity")
+	def permitEntity;
+
+	@DataContext("obo_professional_info")
+	def professionalEm;
+
+	@DataContext("vw_building_permit_doc")
+	def subdocEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Env
+	def env;
+
+	//used for occupancy permit
+	@ProxyMethod
+	public def findByPermitNo( def p ) {
+		def perm = vwPermitEm.find( [controlno: p.permitno ] ).first();
+		if(!perm)
+			throw new Exception("Permit "+p.permitno + " does not exist");
+		perm.permitno = perm.controlno;	
+		//add also the professionals	
+		perm.professionals = subdocEm.select("sectionid,designprofessionalid,supervisorid").find( [appid: perm.appid ] ).where( " NOT(sectionid IS NULL ) AND NOT(designprofessionalid IS NULL) ").list();
+		return perm;
+	}	
+
+	
+}

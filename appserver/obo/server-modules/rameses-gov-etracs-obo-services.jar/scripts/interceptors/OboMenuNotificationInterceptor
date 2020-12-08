@@ -1,0 +1,196 @@
+import com.rameses.annotations.*; 
+
+class OboMenuNotificationInterceptor {
+	
+	@Service("WorkflowTaskCountService")
+	def taskCountSvc;
+
+	@DataContext("building_permit")
+	def bldgPermitEm;
+
+	@ActiveDB("building_evaluation_type")
+	def evalTypeEm;
+
+	@DataContext("occupancy_permit")
+	def occPermitEm;
+
+	@DataContext("building_permit_doc")
+	def bldgSubDocEm;
+
+	@DataContext("occupancy_permit_doc")
+	def occSubDocEm;
+
+	@ActiveDB("occupancy_inspection_type")
+	def inspectionTypeEm;
+
+	@DataContext("occupancy_rpu")
+	def occRpuEm;
+
+	@Service("OboUserRoleService")
+	def userRole;
+
+	@DataContext("sys_wf")
+	def wfEm;
+
+	@Env
+	def env;
+
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid == 'obo' }")
+	public void getDomainCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+
+		def orgid = (env.ORGROOT ==1 ) ? "root" : env.ORGID;
+		def roleStr = userRole.getRolesString( [:] );
+
+		def cnt = 0;
+		def nid = p.notificationid;
+
+		//Building Application count
+		def g = wfEm.getTaskCount( [processname: "building_permit", roles:roleStr  ] );
+		if( g ) cnt += g.sum{ it.count };
+
+		//Building Application count
+		g = evalTypeEm.getAllTaskCount( [roles: roleStr, orgid: orgid] );
+		if( g ) cnt += g.count;
+
+		g = wfEm.getTaskCount( [processname: "occupancy_permit", roles:roleStr ] );
+		if( g ) cnt += g.sum{ it.count };
+
+		g = inspectionTypeEm.getAllTaskCount( [roles: roleStr, orgid: orgid] );
+		if( g ) cnt += g.count;
+
+		g = bldgSubDocEm.findAllDocsToReleaseCount( [roles: roleStr,orgid: orgid] );
+		if( g ) cnt += g.count;
+
+		result.count = cnt;
+	}	
+
+
+	/************************************************************************************************************
+	* BUILDING PERMIT APPLICATION
+	************************************************************************************************************/
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid == 'building_permit' }")
+	public void getBuildingApplicationTaskCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def nid = p.notificationid;
+		def roleStr = userRole.getRolesString( [:] );
+		result.count = 0;
+		def g = wfEm.getTaskCount( [processname: "building_permit", roles:roleStr  ] );
+		if( g ) result.count = g.sum{ it.count };
+	}	
+
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid.startsWith('building_evaluation:') }")
+	public void getBuildingEvaluationTaskCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def nid = p.notificationid
+		def procname = nid.split(":")[0];
+		def cnt = taskCountSvc.getProcessTaskCount( [processname: procname, domain: "OBO", notificationid: nid ] );
+		if(cnt) result.count = cnt.count;
+	}	
+
+	//temporary location here for getting roles count
+	@After( pattern="WorkflowTaskCountService.getCustomNodeListTaskCount", eval="#{ args[0].processname == 'building_evaluation' }" )
+	public void loadCount(  def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+
+		def narr = p.notificationid.split(":");
+		def sectionid = narr[1];
+		def roleStr = userRole.getRolesString( [:] );
+
+		def list = evalTypeEm.getNodeListTaskCountBySection( [sectionid: sectionid, roles: roleStr ] );
+		if( !list ) {
+			list = [[count: 0]];
+		}
+		result.addAll( list );
+	}
+
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid.startsWith('building_permit_doc') }")
+	public void getBuildingAppSubdocCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def nid = p.notificationid;
+		def docid = nid.substring( nid.lastIndexOf(":")+ 1);
+		def roleStr = userRole.getRolesString( [:] );
+		def cnt = bldgSubDocEm.findDocsToReleaseCount( [doctypeid: docid , roles: roleStr ] )?.count;
+		result.count = cnt;
+	}	
+
+	/************************************************************************************************************
+	* OCCUPANCY PERMIT APPLICATION
+	************************************************************************************************************/
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid == 'occupancy_permit' }")
+	public void getOccupancyApplicationTaskCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def nid = p.notificationid;
+		def roleStr = userRole.getRolesString( [:] );
+		result.count = 0;
+		def g = wfEm.getTaskCount( [processname: "occupancy_permit", roles:roleStr  ] );
+		if( g ) result.count = g.sum{ it.count };
+	}	
+
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid.startsWith('occupancy_inspection:') }")
+	public void getOccupancyInspectionTaskCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def nid = p.notificationid;
+		def procname = nid.split(":")[0];
+		def cnt = taskCountSvc.getProcessTaskCount( [processname: procname, domain: "OBO", notificationid: nid ] );
+		if(cnt) result.count = cnt.count;
+	}	
+
+	//temporary location here for getting roles count
+	@After( pattern="WorkflowTaskCountService.getCustomNodeListTaskCount", eval="#{ args[0].processname == 'occupancy_inspection' }" )
+	public void loadOccupancySectionCount(  def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+
+		def narr = p.notificationid.split(":");
+		def sectionid = narr[1];
+		def roleStr = userRole.getRolesString( [:] );
+
+		def list = inspectionTypeEm.getNodeListTaskCountBySection( [sectionid: sectionid, roles:  roleStr ] );
+		if( !list ) {
+			list = [[count: 0]];
+		}
+		result.addAll( list );
+	}
+
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid.startsWith('occupancy_permit_doc') }")
+	public void getOccSubdocCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def nid = p.notificationid;
+		def docid = nid.substring( nid.lastIndexOf(":")+ 1);
+		def roleStr = userRole.getRolesString( [:] );
+		def cnt = occSubDocEm.findDocsToReleaseCount( [doctypeid: docid , roles: roleStr ] )?.count;
+		result.count = cnt;
+	}	
+
+	/************************************************************************************************************
+	* OTHERS
+	************************************************************************************************************/
+
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid == 'obo-rpt' }")
+	public void getRptModuleNotification( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def r = occRpuEm.where( "state=0" ).select("c:{COUNT(*)}").val();
+		if(r) result.count = r;
+	}	
+
+
+	@After(pattern="MenuNotificationService.getCount", eval="#{ args[0].notificationid == 'occupancy_rpu' }")
+	public void getRpuForInspectionCount( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def r = occRpuEm.where( "state=0" ).select("c:{COUNT(*)}").val();
+		if(r) result.count = r;
+	}	
+
+
+}

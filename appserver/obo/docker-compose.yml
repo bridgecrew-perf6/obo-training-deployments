@@ -1,0 +1,24 @@
+version: "3"
+
+services:
+
+  local-obo-server:
+    image: "ramesesinc/enterprise-common-server:255.04.001-a1"
+    container_name: local-obo-server
+    restart: always
+    logging: 
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    env_file:
+      - ../../_custom/env.conf
+    ports:
+      - "8073:8070"
+    volumes:
+      - ../../_res/connections:/apps/server/services/apps/enterprise/connections/ext
+      - ../../_custom/datasources/obods:/apps/server/services/datasources/mainds
+      - ./templates:/apps/server/templates      
+      - ../../_custom/reports/obo:/apps/server/templates/custom
+      - ../../_custom/output:/apps/server/output
+      - ./server-modules:/enterprise/modules

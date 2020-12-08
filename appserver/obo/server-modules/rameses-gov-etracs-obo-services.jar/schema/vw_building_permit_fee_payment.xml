@@ -1,0 +1,19 @@
+<schema>
+	<element tablename="vw_building_permit_fee_payment">
+		<field name="objid" primary="true"/>
+		<field name="appid"/>
+		<field name="parentid"/>
+		<field name="itemid"/>
+		<field name="amount" type="decimal" />
+		<field name="amtpaid" type="decimal" />
+		<field name="remarks"/>
+		<field name="item_objid"/>
+		<field name="item_title"/>
+		<field name="item_sortorder"/>
+		<field name="payment_type"/>
+		<field name="payment_refno"/>
+		<field name="payment_refid"/>
+		<field name="payment_refdate"/>
+	</element>
+</schema>
+

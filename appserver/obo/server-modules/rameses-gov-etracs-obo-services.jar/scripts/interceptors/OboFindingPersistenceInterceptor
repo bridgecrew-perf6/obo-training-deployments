@@ -1,0 +1,50 @@
+import com.rameses.annotations.*;
+
+class OboFindingPersistenceInterceptor {
+	
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext(dynamic=true)
+	def db;
+
+	@Env
+	def env;
+
+	//FINDINGS
+	@Before(pattern="PersistenceService.create", eval="#{args[0]._schemaname?.matches('.*_finding')}") 
+	public void beforeSaveFinding( def evt ) {
+		def o = evt.args[0];
+		o.createdby = [objid: env.USERID, name: env.FULLNAME ];
+		o.dtcreated = dateSvc.getServerDate();
+	} 
+
+	@After(pattern="PersistenceService.create", eval="#{args[0]._schemaname?.matches('.*_finding') }") 
+	public void afterUpdateFinding( def evt ) {
+		def o = evt.args[0];
+		def z = evt.result;
+		if(o.previd ) {
+			def em = db.lookup( o._schemaname );
+			em.find( [objid: o.previd] ).update( [supersederid: z.objid ] );
+		}	
+	} 
+
+	@Before(pattern="PersistenceService.removeEntity", eval="#{args[0]._schemaname?.matches('.*_finding') }") 
+	public void beforeRemoveFinding( def evt ) {
+		def o = evt.args[0];
+
+		def em = db.lookup( o._schemaname );
+
+		def v = em.find( [objid: o.objid ]).first();
+
+        if(v.state != 2) throw new Exception("Only open items can be deleted")        
+        if(v.supersederid !=null) throw new Exception("Superseded items cannot be deleted")
+        if(v.createdby.objid != env.USERID )
+            throw new Exception("Only the creator of this item can delete it");
+
+		//locate first previous item whose supersederid is this
+		em.find( [supersederid: o.objid ] ).update( [supersederid: "{NULL}"] );
+	} 
+
+
+}

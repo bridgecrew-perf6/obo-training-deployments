@@ -1,0 +1,212 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+
+class OccupancyApplicationWorkflowInterceptor {
+	
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@Service("WorkflowNotificationService")
+    def wfNotificationSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("OccupancyInspectionScheduleService")
+	def occSkedSvc;
+
+	@DataContext("occupancy_inspection")
+	def inspEm;
+
+	@DataContext("vw_occupancy_inspection")
+	def vwSectionEm;
+
+	@DataContext("occupancy_inspection_type")
+	def sectionTypeEm;
+
+	@DataContext("occupancy_permit")
+	def appEm;
+
+	@DataContext("building_permit_rpu")
+	def rpuEm;
+
+	@DataContext("occupancy_permit_requirement")
+	def reqEm;
+
+	@DataContext("occupancy_inspection_finding")
+	def findingEm;
+
+	@DataContext("occupancy_permit_fee")
+	def feeEm;
+
+	@DataContext("occupancy_permit")
+	def permitEm;
+
+
+	@Service("OccupancyApplicationTransmittalService")
+	def transmittalSvc;
+
+	@Service("OccupancyApplicationService")
+    def appSvc;
+
+
+
+    /*
+    @Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' }") 
+	public void testAction( def evt ) {
+		def e = evt.args[0];
+		throw new Exception("params is "+ e);
+	}
+	*/
+
+    // --- Requirement and Findings for  revision --- //
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-revision' }") 
+	public void doActionBeforeRevision( def evt ) {
+		def p = evt.args[0];
+		p.type = (p.to == 'requirement-revision' ) ? 'requirement' : 'finding';
+		def m = [appid:p.refid, type:p.type];
+		transmittalSvc.validateForRevision( m );
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-revision' }") 
+	public void doActionAfterRevision( def evt ) {
+		def p = evt.args[0];
+		def r = evt.result;
+		def m = [taskid:r.taskid, appid:p.refid, type: p.type];
+		transmittalSvc.create( m );
+	}
+
+    //approval of requirements
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname =='occupancy_permit' && args[0].action == 'approve-requirement' }")      
+	public void doRequirementValidation( def evt ) { 
+		def p = evt.args[0];
+		//check if there are pending findings
+		def t = reqEm.find( [appid: p.refid ] ).select("c:{COUNT(*)}").where("state=0").val();
+		if( t > 0) throw new Exception("You must check first all requirements.");
+		t = reqEm.find( [appid: p.refid ] ).select("c:{COUNT(*)}").where("state=2 AND supersederid IS NULL").val();
+		if( t > 0) throw new Exception("There are unresolved requirements. You need to send this for revision");
+
+		//generate the app no here
+		appSvc.generateAppNo( [appid: p.refid ] );
+	}
+
+	//trigger when entering evaluation state
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-inspection' }") 
+	public void beforeSendForInspection( def evt ) {
+		def p = evt.args[0];
+		def t = appEm.find( [objid: p.refid] ).select("inspectiondate").val();
+		if(!t) throw new Exception("Please specify the inspection date first");
+	}
+
+	//trigger when entering evaluation state
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-inspection' }") 
+	public void fireInspectionSections( def evt ) {
+		def p = evt.args[0];
+		def r = evt.result;
+
+		def appid = p.refid;
+		def state = r.state;
+
+		def mlist = appEm.getInspectionsToActivate( [appid: appid ] );
+		p._notificationlist = [];
+		if( mlist ) {
+			def dt = dateSvc.getServerDate();
+			mlist.each {
+				def m = [appid: appid, typeid: it.objid, uploaded: 0 ]
+				boolean b = inspEm.find( m ).exists();
+				if(!b) {
+					m = inspEm.create( m );
+					def f = [:];
+					f.processname = 'occupancy_inspection';
+					f.refid = m.objid;
+					f.startdate = dt;
+					f.info = [ type: it.objid, appid: appid ];
+					wfSvc.start(f);		
+
+					//we need to do this so we can fire this later. see next interceptor		
+					p._notificationlist << 'occupancy_inspection:'+it.objid.toLowerCase();
+				}
+			}
+		}
+	}
+
+	//this should fire after all the tasks have been saved
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0]._notificationlist!=null }", index=50000) 
+	public void afterFireInspectionSections( def evt ) {
+		def p = evt.args[0];
+		p._notificationlist.each {
+			wfNotificationSvc.notify( [notificationid: it] );
+		}
+
+		//notify the google mail calendar after sending the inspections
+		//occSkedSvc.sendToCalendar( [appid: p.refid ] );
+	}
+
+	//for-reactivation. check if there are evaluations where the task state is for-revision and reactivate each
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'reactivate' }" ) 
+	public void reactivateInspectionTasks( def evt ) {
+		def p = evt.args[0];
+		def list = vwSectionEm.select("objid,taskid,typeid").find( [appid: p.refid ] ).where( " task.state = 'for-revision' " ).list();
+		if( list ) {
+			def dt = dateSvc.getServerDate();
+			list.each {
+				def f = [:];
+				f.processname = 'occupancy_inspection';
+				f.notificationid = ('occupancy_inspection:'+it.typeid.toLowerCase()).trim();
+				f.refid = it.objid;
+				f.taskid = it.taskid;
+				f.startdate = dt;
+				f.action = "reactivate";
+				f.info = [:];
+				wfSvc.signal(f);	
+			}		
+		}
+	}
+
+	//approve-inspection. 
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname =='occupancy_permit' && args[0].action.matches('approve-inspection') }")      
+	public void doEvaluationValidation( def evt ) { 
+		def p = evt.args[0];
+		//check if there are pending findings
+		def t = findingEm.find( [appid: p.refid ] ).select("c:{COUNT(*)}").where("state=2 AND supersederid IS NULL").val();
+		if( t > 0) throw new Exception("There are unresolved findings. You need to send this for revision");
+	}
+
+	//check at least one fee
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-assessment-approval' }") 
+	public void doActionBeforeApproveAssessment( def evt ) {
+		def p = evt.args[0];
+		def c = feeEm.find( [appid: p.refid ]).select("c:{COUNT(*)}").where("sectionid IS NULL").val();
+		if( c == 0 )
+			throw new Exception("There must be at least one fee");		
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'post-payment' }" ) 
+	public void postPaymentTasks( def evt ) {
+		def p = evt.args[0];
+		def appid = p.refid;
+		def dt = dateSvc.getServerDate();
+
+		//search first before creating
+		def perm = permitEm.find( [appid: appid]).first();
+		if(!perm) {
+			//trigger the permit
+			def m = [:];
+			m.permitno = "TMP" + new UID();
+			m.appid = appid;
+			m.state = 0;
+			permitEm.create( m );			
+		}
+	}
+
+	//release process. Make sure there is at least one occupancy_permit_issuance
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }", index=0 ) 
+	public void doActionBeforeRelease( def evt ) {
+		def p = evt.args[0];
+		def appid = p.refid;
+		def pmt = permitEm.find( [appid: appid]).first();
+		if( !pmt) throw new Exception("Permit not found");
+		if(pmt.state == 0) throw new Exception("Permit is not yet issued. Please issue the permit first");
+	}
+}

@@ -1,0 +1,179 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+
+/* ******************************************************************************************************
+Notes:
+The ff. are generic actions with similar related actions
+1. send-for-verification = do nothing special; this action is triggered by the system when all evaluations are complete
+2. send-for-revision = invoked by OBO verifier. triggers all email messages
+3. reactivate - to be invoked by OBO receiving
+approve - invoked by OBO Verifier. 
+******************************************************************************************************* */
+class BuildingPermitWorkflowInterceptor { 
+
+	@DataContext("building_permit")
+	def appEm;
+
+	@DataContext("vw_building_permit")
+	def vwAppEm;
+
+	@DataContext("building_permit_rpu")
+	def rpuEm;
+
+	@DataContext("building_permit_fee")
+	def feeEm;
+
+	@DataContext("obo_control")
+	def issuanceEm;
+
+	@DataContext("building_permit_doc")
+	def subdocEm;
+
+	@DataContext("vw_building_permit_doc")
+	def vwSubdocEm;
+
+	@Service("MenuNotificationService")
+    def notificationSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("JasperEmailQueueService")
+    def emailSvc;
+
+	@Service("OboRequirementService")
+	def reqSvc;
+
+	@Service("OboFindingService")
+	def findingSvc;
+
+    @Service("OboAppnoGeneratorService")
+	def appSvc;
+
+	@Service("BuildingEvaluationService")
+	def evalSvc;
+
+    // --- RECEIVING ---- //
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action=='send-for-requirement-verification' }") 
+	public void doActionBeforeReceiving( def evt ) {
+		def p = evt.args[0];
+		def app = vwAppEm.find( [objid: p.refid ]).first();
+		if(!app.txntype) throw new Exception("Transaction Type is required");
+		def c = rpuEm.find( [appid: p.refid ]).where("taxclearanceid IS NULL").exists();
+		if( c ) throw new Exception("Please generate the tax declaration documents first");
+		c = rpuEm.find( [appid: p.refid ]).where("truecopycertid IS NULL").exists();
+		if( c ) throw new Exception("Please generate the tax declaration documents first");
+	}
+
+    // --- REQUIREMENT VERIFICATION ---- //
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'send-for-requirement-revision' }") 
+	public void doActionBeforeRequirementRevision( def evt ) {
+		def p = evt.args[0];
+		p.transmittal = reqSvc.createTransmittal( [apptype: "building_permit", appid:p.refid] );
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'send-for-requirement-revision' }") 
+	public void doActionAfterRequirementRevision( def evt ) {
+		def p = evt.args[0];
+		emailSvc.send( [reportid:"building_requirement_transmittal", refid: p.transmittal.objid ]);	
+	}
+
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname =='building_permit' && args[0].action == 'approve-requirement' }")      
+	public void doRequirementValidation( def evt ) { 
+		def p = evt.args[0];
+		reqSvc.validateApproval( [apptype: "building_permit", appid: p.refid ] );
+
+		//generate the app no here
+		def appno = appSvc.generate([apptype:"building_permit"]);
+		appEm.find( [objid: p.refid ]).update( [appno: appno, appdate: dateSvc.getServerDate() ] );
+		//immediately email claim stub after
+		emailSvc.send( [reportid:"building_permit_claimstub", refid:p.refid]);
+	}
+
+    // --- ZONING AND TRADE EVALUATION ---- //
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && result.state?.matches('(zoning|trade)-evaluation-revision') }") 
+	public void sendEvaluationFindingTransmittal( def evt ) {
+		def p = evt.args[0];
+		def r = evt.result;
+		def transmittal = findingSvc.createTransmittal( [apptype: "building_permit", appid:p.refid, type: r.state.replace("-revision", "") ] );
+		emailSvc.send( [reportid:"building_finding_transmittal", refid:transmittal.objid ]);			
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && result.state?.matches('(zoning|trade)-evaluation') && args[0].action != 'reactivate' }") 
+	public void fireEvaluationSections( def evt ) {
+		def p = evt.args[0];
+		def r = evt.result;
+		def tasks = evalSvc.startEvaluationTasks( [appid: p.refid, state: r.state ] );
+		p._notificationlist = tasks.collect{ 'building_evaluation:' + it.toLowerCase() };
+	}
+
+	//for-reactivation. check if there are evaluations where the task state is for-revision and reactivate each
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'reactivate' }" ) 
+	public void reactivateEvaluationTasks( def evt ) {
+		def p = evt.args[0];
+		def tasks = evalSvc.reactivateEvaluationTasks( [appid: p.refid, state: p.state ] );
+		p._notificationlist = tasks.collect{ 'building_evaluation:' + it.toLowerCase() };
+	}
+	
+	//check at least one fee
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'send-for-assessment-approval' }") 
+	public void doActionBeforeSendAssessmentForApproval( def evt ) {
+		def p = evt.args[0];
+		def c = feeEm.find( [appid: p.refid ]).select("c:{COUNT(*)}").where("parentid IS NULL").val();
+		if( c==null || c == 0 )
+			throw new Exception("There must be at least one fee");	
+		//loop all documents where there is still pending unassessed	
+		def list = subdocEm.getDocsThatRequireFees( [appid: p.refid ] );
+		if(list) {
+			throw new Exception("The ff. must have fees: \n" + list*.title.join("\n") );
+		}	
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'approve-assessment' }") 
+	public void doActionAfterApproveAssessment( def evt ) {
+		def p = evt.args[0];
+		//immediately send order of payment
+		emailSvc.send( [reportid:"building_permit_assessment", refid:p.refid ]);			
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'post-payment' }" ) 
+	public void postPaymentTasks( def evt ) {
+		def p = evt.args[0];
+		def appid = p.refid;
+		def dt = dateSvc.getServerDate();
+
+		def docList = vwSubdocEm.find( [appid: appid]).where("doctype.issuetype = 2 AND app.task.state = 'releasing' AND controlid IS NULL AND doctype.refdoc IS NULL").list()*.doctype?.objid;	
+		
+		p._notificationlist = [];
+		docList.each {
+			p._notificationlist <<  'building_permit_doc:' + it.toLowerCase();				
+		}
+		p._notificationlist << "obo";
+	}
+
+	//this should fire after all the tasks have been saved
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0]._notificationlist!=null }", index=50000) 
+	public void notifyOtherTasks( def evt ) {
+		def p = evt.args[0];
+		notificationSvc.notify( p._notificationlist );
+	}
+
+	//release process. Make sure there is at least one building_permit_issuance
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }", index=0 )
+	public void doActionBeforeRelease( def evt ) {
+		def p = evt.args[0];
+		def appid = p.refid;
+		def docList = subdocEm.find( [appid: appid]).where("controlid IS NULL").select("doctype.title").list();
+		if( docList ) {
+			throw new Exception("The ff. documents are not yet issued: " + docList*.doctype.title.join("/n") );
+		}		
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }", index=0 ) 
+	public void doActionAfterRelease( def evt ) {
+		def p = evt.args[0];
+		throw new Exception("releasing the building permit");
+	}
+
+
+} 

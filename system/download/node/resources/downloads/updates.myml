@@ -64,3 +64,13 @@ app:
       - { order: 250, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls.jar" }
       - { order: 251, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-ceo.jar" }
       - { order: 252, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-reports.jar" }
+      # obo
+      - { order:301, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
+      - { order:302, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-collection.jar" }
+      - { order:303, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }
+      - { order:304, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo.jar" }
+      - { order:305, version: 2.55, file: "modules/obo/rameses-gov-etracs-rptis-obo.jar" }
+      - { order:306, version: 2.55, file: "modules/obo/reports/bfp-standard-forms.jar" }
+      - { order:306, version: 2.55, file: "modules/obo/reports/obo-standard-forms.jar" }
+      - { order:306, version: 2.55, file: "modules/obo/reports/zoning-standard-forms.jar" }
+

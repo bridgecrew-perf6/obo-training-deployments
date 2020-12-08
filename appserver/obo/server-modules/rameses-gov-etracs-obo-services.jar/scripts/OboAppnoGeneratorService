@@ -1,0 +1,42 @@
+import com.rameses.annotations.*;
+
+class OboAppnoGeneratorService {
+	
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("ControlnoGeneratorService")
+	def controlNoSvc;
+
+	@DataContext(dynamic=true)
+	def db;
+
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@Env
+	def env;
+
+	@ProxyMethod
+	public def generate(def o ) {
+		if(!o.apptype) throw new Exception("controlnopattern is required");
+
+		def docid = o.apptype.toUpperCase();
+		def doctype = doctypeEm.find( [objid: docid ] ).first();
+
+		def pattern = doctype.appnopattern;
+		if(!pattern) throw new Exception("Please define appnopattern in " + docid );
+		def appno = controlNoSvc.getNextNo( pattern );
+		if( o._schemaname && o.appid ) {
+			def appEm = db.lookup( o._schemaname );
+			def u = [:];
+			u.appdate = dateSvc.getServerDate();
+			u.appno = appno;
+			appEm.find( [objid: o.appid ] ).update( u );
+		}		
+		return appno;
+	} 
+
+
+
+}

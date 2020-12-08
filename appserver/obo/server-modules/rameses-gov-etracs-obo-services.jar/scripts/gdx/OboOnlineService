@@ -1,0 +1,77 @@
+import com.rameses.annotations.*
+import com.rameses.util.*
+import com.rameses.common.*
+import com.rameses.services.extended.*
+
+class OboOnlineService  {
+
+    @Service(value="TDOnlineService", connection="etracs")
+    def svc;
+
+    @Service(value="EntityService", connection="entity")
+    def entitySvc;
+
+    @Service("BuildingApplicationService")
+    def appSvc;
+
+    @Service("BuildingPermitService")
+    def permitSvc;
+
+    @ProxyMethod
+    public def findLocation( def params ) {
+        def info = svc.verifyTaxDec(params);
+
+        if(info.state != "CURRENT" ) {
+            throw new Exception("The tax declaration must be in current state. Please verify with the assessors office");
+        }    
+
+        info.refid = info.objid;
+        if(!info.taxpayer?.objid ) 
+        	throw new Exception("Error in OboOnlineService. There is no taxpayer.objid returned in TDOnlineService");
+        def txp = info.remove("taxpayer");   
+
+        info.lotno = info.remove("cadastrallotno");
+        
+        def entity = entitySvc.open( [objid: txp.objid ] );
+        info.owner.putAll( 
+            [
+                profileid: entity.objid,
+                profileno: entity.entityno,
+                birthdate: entity.birthdate,
+                email: entity.email,
+                mobileno: entity.mobileno,
+                gender: entity.gender,
+                name: entity.name,
+                entitytype: entity.type,
+                lastname: entity.lastname,
+                firstname: entity.firstname,
+                middlename: entity.middlename,
+                tin: entity.tin,
+                address: entity.address
+            ]
+        );
+
+        info.owner.resident =  (entity.address.type == "nonlocal") ? 0 : 1;
+        return info;
+    }
+
+    @ProxyMethod
+    public def findBldgPermitNo( def params ) {
+        return permitSvc.findByPermitNo( [permitno: params.permitno ] );
+    }
+
+    @ProxyMethod
+    public def verifyApplication( def params ) {
+        def app = appSvc.verifyApp(params);
+        Random rand = new Random();
+        def otp = rand.nextInt(100000000);
+        app.key = String.format("%06d", otp).substring(0,6);
+        return app;
+    }
+
+    @ProxyMethod
+    public def findApplicationStatus( def params ) {
+        return appSvc.findAppStatus(params);
+    }
+
+}

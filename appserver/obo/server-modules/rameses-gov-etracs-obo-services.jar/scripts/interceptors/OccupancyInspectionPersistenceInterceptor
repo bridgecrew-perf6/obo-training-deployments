@@ -1,0 +1,55 @@
+import com.rameses.annotations.*;
+
+class OccupancyInspectionPersistenceInterceptor {
+	
+	@Service("WorkflowTaskService")
+	def taskSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext("vw_occupancy_permit")
+	def vwAppEm;
+
+	@DataContext("occupancy_inspection")
+	def inspEm;
+
+	@DataContext("occupancy_inspection_task")
+	def taskEm;
+
+	@Env
+	def env;
+
+	@Before(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'occupancy_inspection' }" ) 
+	public void doActionBeforeCreate( def evt ) {
+		def p = evt.args[0];
+		def app = vwAppEm.find( [objid: p.appid]  ).first();
+		if(!app) throw new Exception("application no found");
+		//throw new Exception("check if taskid is correct " + app.task?.state );
+	}
+
+	@After(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'occupancy_inspection' }" ) 
+	public void doActionAfterSave( def evt ) {
+		def p = evt.args[0];
+		def res = evt.result;
+		def f = [:];
+		f.processname = 'occupancy_inspection';
+		f.refid = res.objid;
+		f.startdate = dateSvc.getServerDate();
+		f.info = [ type: p.typeid, appid: p.appid ];
+		taskSvc.start(f);
+
+	}
+
+	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname == 'occupancy_inspection' }" ) 
+	public void doActionBeforeRemoveEntity( def evt ) {
+		def p = evt.args[0];
+		inspEm.find( [objid: p.objid ] ).update( [ taskid: "{NULL}" ] );
+		taskEm.find( [refid: p.objid] ).delete();
+	}
+	
+
+
+	
+
+}

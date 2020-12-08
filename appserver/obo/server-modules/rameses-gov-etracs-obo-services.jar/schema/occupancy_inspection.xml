@@ -1,0 +1,9 @@
+<schema>
+	<element tablename="occupancy_inspection">
+		<field name="objid" primary="true" prefix="OCCINSP"/>
+		<field name="appid" />
+		<field name="typeid" />
+		<field name="taskid" />
+		<field name="uploaded" />
+	</element>
+</schema>

@@ -1,0 +1,19 @@
+<schema>
+	<element tablename="building_evaluation_type">
+		<field name="objid" primary="true" visible="true"/>
+		<field name="title" />
+		<field name="sortindex" />
+		<field name="activationstate" />
+		<field name="required" />
+
+		<complex name="customroles" ref="building_evaluation_type_role" jointype="one-to-many" required="false">
+			<key field="objid" target="typeid" />
+		</complex>	
+
+		<complex name="section" ref="obo_section" jointype="many-to-one" required="false">
+			<key field="sectionid" target="objid" />
+		</complex>	
+
+	</element>
+</schema>	
+

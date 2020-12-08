@@ -1,0 +1,9 @@
+<schema>
+	<element tablename="building_evaluation_type_role">
+		<field name="objid" primary="true" prefix="BETR"/>
+		<field name="typeid" />
+		<field name="state" />
+		<field name="role" />
+	</element>
+</schema>	
+

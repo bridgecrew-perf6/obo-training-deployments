@@ -1,0 +1,124 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+import obo.facts.*;
+import java.text.*;
+import treasury.utils.*;
+import treasury.facts.*;
+import enterprise.utils.*;
+
+public class OccupancyAssessmentService  {
+
+	@Service("BillingRuleService")
+	def billingRuleSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext("obo_itemaccount")
+	def itemAcctEm;
+
+	@DataContext("vw_occupancy_permit")
+	def vwAppEm;
+
+	@DataContext("occupancy_permit")
+	def appEm;
+
+	@DataContext("occupancy_permit_fee")
+	def feeEm;
+
+	@DataContext("vw_occupancy_inspection")
+	def vwSectionEm;
+
+	@ProxyMethod
+	public def assess(o) {
+		def vapp = vwAppEm.find( [objid: o.appid ] ).first();
+		def occ = vapp.occupancytype;
+		def infos = [];
+		def factBuilder = new FactBuilder();
+		factBuilder.facts << new BuildingApplication( vapp ); 
+        factBuilder.facts << new OccupancyType( occ );
+		factBuilder.variableInfoProvider = new DefaultVariableInfoProvider(
+			schemaName:"obo_variable",
+			createDecimalFact: { return new OboDecimalInfo() },
+			createIntegerFact: { return new OboIntegerInfo() },
+			createBooleanFact: { return new OboBooleanInfo() }
+		);
+
+		if( o.sectionid ) {
+			factBuilder.facts << new BuildingPermitSection( name: o.sectionid );
+		}
+		else {
+			//exclude already sections that are already computed.
+			def vsections = vwSectionEm.find( [appid: o.appid ] ).where( " NOT(type.requirefee = 1) ").list()*.typeid;
+			vsections.each {
+				factBuilder.facts << new BuildingPermitSection( name: it );
+			}
+		}
+
+		def req = [:];
+		req.factBuilder = factBuilder;
+		req.rulename = "oboassessment";
+		req.params = [infos: infos];
+		req.include_items = false;
+
+		def res = billingRuleSvc.execute( req );
+
+		def items = [];
+		res.billitems.findAll{ it.billcode && it.item == null && it.amount > 0 }.each {
+			def p = itemAcctEm.find( [objid: it.billcode ] ).first();
+			if( o.sectionid ==null || p.sectionid == o.sectionid ) {
+				it.item = p;
+				if(o.sectionid) it.sectionid = o.sectionid;
+				it.amtpaid = 0;
+				it.appid = o.appid;
+				it.sortorder = (p.sortorder == null ? 100 : p.sortorder);
+				items << it;			
+			}
+		};
+
+		def result = [items:items]; 
+		if( o.save_fees == true ) {
+			items.each {
+				def zz = feeEm.find( [appid: o.appid, itemid: it.item.objid ] ).first();
+				if( !zz ) {
+					feeEm.create( it );
+				};
+			}
+			def amount = feeEm.find([appid:o.appid ]).select("c:{SUM(amount)}").val();
+			appEm.find( [objid: o.appid] ).update( [amount: amount ]);
+			result.amount = amount;
+		}
+		return result;
+	}
+
+	@ProxyMethod
+	public def getFees( def o ) {
+		return feeEm.find([appid: o.appid ]).orderBy("item.sortorder").list();
+	}
+
+	@ProxyMethod
+	public def saveFees(o) {
+		o.items.each {
+			it.itemid = it.item?.objid;
+			it.amtpaid = 0;
+			feeEm.create(it);
+		}
+		def result = [:];
+		if(o.appid) {
+			def amount = feeEm.find([appid:o.appid ]).select("c:{SUM(amount)}").val();
+			appEm.find( [objid: o.appid] ).update( [amount: amount ]);
+			result.amount = amount;		
+		}
+		return result;
+	}
+
+	@ProxyMethod
+	public def clearFees(def o ) {
+		feeEm.find( [appid: o.appid ]).where("sectionid IS NULL").delete();
+		def val = feeEm.find( [appid: o.appid ]).select("c:{SUM(amount)}").val();
+		appEm.find( [objid: o.appid] ).update( [amount: val ]);
+		return [amount: val];
+	}
+
+}

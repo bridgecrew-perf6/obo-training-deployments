@@ -1,0 +1,36 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+
+class OccupancyRpuWorkflowInterceptor {
+	
+	@DataContext("occupancy_rpu")
+	def rpuEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	//trigger when entering evaluation state
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'send-for-inspection' }", index=1000) 
+	public void fireRpuEntryOnInspection( def evt ) {
+		def p = evt.args[0];
+		def r = evt.result;
+
+		def appid = p.refid;
+		//add if does not yet exist
+		def exists = rpuEm.find( [appid: appid ]).exists();
+		if( !exists ) {
+			def m = [:];
+			m.appid = appid;
+			m.dtcreated = dateSvc.getServerDate();
+			rpuEm.create( m ); 
+			if( r._notificationlist ) {
+				r._notificationlist << "occupancy_rpu";
+				r._notificationlist << "obo-rpt";
+			}			
+		}
+
+
+	}
+
+
+}

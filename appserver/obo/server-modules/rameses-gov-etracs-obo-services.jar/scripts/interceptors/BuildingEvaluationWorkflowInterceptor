@@ -1,0 +1,101 @@
+import com.rameses.annotations.*;
+
+class BuildingEvaluationWorkflowInterceptor {
+	
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@DataContext("building_evaluation_finding")
+	def findingEm;
+
+	@DataContext("vw_building_evaluation")
+	def vwEvalEm;
+
+	@DataContext("building_evaluation")
+	def evalEm;
+
+	@DataContext("vw_building_permit")
+	def appEm;
+
+
+	@DataContext("building_evaluation_type_role")
+	def evalTypeRoleEm;
+	
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_evaluation' && args[0].action == 'send-for-revision' }" ) 
+	public void doActionBeforeRevision( def evt ) {
+		def p = evt.args[0];
+		def c = findingEm.find([parentid: p.refid]).where("state = 2 AND supersederid IS NULL AND transmittalid IS NULL").select("c:{COUNT(*)}").val();
+		if( c == 0 ) throw new Exception("There must be at least one open finding");
+	}
+
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_evaluation' && args[0].action == 'approve' }" ) 
+	public void doActionBeforeApprove( def evt ) {
+		def p = evt.args[0];
+		def c = findingEm.find([parentid: p.refid]).where("state = 2 AND supersederid IS NULL").select("c:{COUNT(*)}").val();
+
+		if( c > 0 ) throw new Exception("There must be no unresolved findings. Click on send for revision instead");
+
+		//check if there is zoning info in application.
+		def appid = vwEvalEm.find( [objid: p.refid ]).select("appid").val();
+		def app = appEm.find( [objid:  appid] ).first();
+		if( !app.zoneclass?.objid ) throw new Exception("Zone class must be specified");
+		if( !app.txntype ) throw new Exception("Txn type must be specified");
+
+		//check here if there are fees
+		def list = evalEm.getDocsThatRequireFees( [evaluationid: p.refid ] );
+		if(list) {
+			throw new Exception("The ff. must have fees: \n" + list*.title.join("\n") );
+		}
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_evaluation' && args[0].action.matches('send-for-revision|approve') }") 
+	public void doSendForRevisionOrApprove( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+
+		def appid = vwEvalEm.find( [objid: p.refid] ).select("appid").val();
+		def tlist = vwEvalEm.find([appid:appid]).select("task.state").list();
+
+		def hasOpen = tlist.find{ !it.task.state.matches( "for-revision|end" ) };
+		if( hasOpen ) {
+			return;
+		}
+
+		//determine what action to fire in.  Check worfklow if for-revision it will go thru for revision.
+		boolean hasRevision = (tlist.find{ it.task.state == "for-revision" }!=null) ? true : false;
+
+		def f = [:];
+		f.processname = 'building_permit';
+		f.refid = appid;
+		f.startdate = dateSvc.getServerDate();
+		f.info = [ hasrevision: hasRevision ];
+		wfSvc.signal(f);
+	}
+
+
+	/************************************************************
+	* Attach roles when opening or after signalling and starting
+	*************************************************************/
+	@After( pattern="WorkflowTaskService.(signal|start|findTask)", eval="#{ args[0].processname == 'building_evaluation' }" )
+	public void customizeRole(  def evt ) {
+		def r = evt.result;
+		//get the corrected roles for this
+		def typeid = vwEvalEm.find( [objid: r.refid ] ).select("typeid").val();
+		def replaceRole = {state, itm->
+			def rol = evalTypeRoleEm.find( [typeid: typeid, state: state ] ).first();
+			if(rol) itm.role = rol.role;	
+		}
+		replaceRole( r.state, r );
+		r.transitions.each { tran ->
+			replaceRole( tran.to,  tran );
+		}
+
+	}
+
+
+	
+
+}

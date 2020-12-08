@@ -1,0 +1,57 @@
+import com.rameses.annotations.*; 
+
+class OboCashReceiptService {
+
+	@DataContext(dynamic=true)
+	def em;
+
+	@Service("OboBillingService")
+	def billingSvc;
+
+	@ProxyMethod
+	public def getBilling( pp ) {
+		def param = pp.params;
+		if ( !param ) throw new Exception('params argument is required in OboBillingService'); 
+		if( !param.apptype ) throw new Exception("apptype is required");
+		if( !param.id ) throw new Exception("id is required");
+
+		// compute bill items 
+		def res = billingSvc.getBillItems( [refno: param.id.trim(), apptype:param.apptype, include_items: true, amtpaid: param.amtpaid ] );
+
+		if ( res.task?.state != 'payment' ) 
+			throw new Exception("This is not yet ready for payment");
+
+		//transform into billitems to conform to the cashreceipt common client
+		def billitems = [];
+		res.items.each {
+			def m = [:];
+			m.putAll( it );
+			m.surcharge = 0;
+			m.interest = 0;
+			m.discount = 0;
+			m.total = it.amount;
+			billitems << m
+		}	
+
+		def resp = [items: res.items, billitems: billitems ]; 
+		resp.appid = res.objid;
+		resp.appno = res.appno;
+		resp.apptype = param.apptype;
+		resp.txntype = "obo";
+		resp.app = [appid: res.objid ];
+
+		if( res.applicant.profileid ) {
+			def m = [:];
+			m.putAll( res.applicant );
+			m.objid = res.profileid;
+			resp.payer = m;
+		}
+		resp.paidby = res.applicant.name ;
+		resp.paidbyaddress = res.applicant.address?.text;
+		resp.remarks = "Payment for " + res.permittype + " " + res.appno; 
+		return resp; 
+	}
+
+
+
+}

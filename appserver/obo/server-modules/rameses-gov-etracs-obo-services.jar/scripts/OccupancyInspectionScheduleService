@@ -1,0 +1,90 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import com.rameses.http.*;
+import com.rameses.osiris3.server.*;
+
+
+class OccupancyInspectionScheduleService {
+	
+	@XConnection("cloud-server")
+	def cloudServer;
+
+	@XConnection("calendar-server")
+	def calendar;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext("vw_occupancy_permit")
+	def vwAppEm;
+
+	@DataContext("occupancy_permit")
+	def appEm;
+
+	@Service("Var")
+	def var;
+
+	@Service
+	def self;
+
+	@ProxyMethod
+	public def updateSchedule( def o ) {
+		appEm.find( [objid: o.objid ]).update( [inspectiondate: o.date ] );
+		
+		//test sample here
+		//self.sendToCalendar( [appid: o.objid] );
+    }    
+
+    @ProxyMethod
+    public void sendToCalendar( def o ) {
+    	def useCalendar = var.use_calendar;
+    	if( useCalendar==null || useCalendar !="true" ) return;
+
+    	def conf = calendar.conf;
+
+		def app = vwAppEm.find( [objid: o.appid]).first();
+
+		def emails = var.obo_inspection_calendar_group.split(",");
+		if(!emails) throw new Exception("Please include email addresses at obo_inspection_calendar_group") 
+
+		def buff  = [];
+		buff << "Bldg Permit No: " + app.bldgpermit.permitno;		
+		buff << "Project Title: " + app.bldgpermit.title;
+		buff << "Occupancy Class: " + app.bldgpermit.occupancytype.division.objid;
+		//buff << "Project Cost: " + app.bldgpermit.projectcost;
+		//buff << "Total Floor Area: " + app.bldgpermit.totalfloorarea;
+
+		def v = [:];
+		v.summary = "Building Inspection Schedule for Occupancy Permit ["+ app.appno + "]";
+		v.description = buff.join("<br>");
+		if( app.bldgpermit.location?.text ) {
+			v.location = app.bldgpermit.location.text;
+		}
+		v.start = [
+			dateTime: app.inspectiondate,
+			timeZone: "Asia/Manila"
+		];
+		v.end = [
+			dateTime: dateSvc.add( app.inspectiondate, "5h" ),
+			timeZone: "Asia/Manila"
+		];
+		v.recurrence = ["RRULE:FREQ=DAILY;COUNT=1"];
+		v.attendees = emails.collect{ [email: it ] };
+		v.reminders = [
+			useDefault: false,
+			overrides: [
+				[method: "email", minutes: 1440],
+				[method: "popup", minutes: 10],				
+			]
+		];
+
+		def httpClient = new HttpClient(conf.host);
+		httpClient.contentType = "application/json";
+		//httpClient.debug = true;
+		def json = new JSON();
+		def data = json.encode( v );
+
+		httpClient.post("calendar/event/insert", data );
+    }
+	
+}

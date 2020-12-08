@@ -1,0 +1,49 @@
+import com.rameses.annotations.*; 
+
+class OboApplicationSubdocPersistenceInterceptor { 
+
+	@DataContext("obo_checklist_master")
+	def chkListEm;
+
+	@DataContext("obo_itemaccount")
+	def itemAcctEm;
+
+	@DataContext(dynamic=true)
+	def dynEm;
+
+	@DataContext("obo_variable")
+	def varEm;
+
+	@Env
+	def env;
+
+	@After(pattern="PersistenceService.read", eval="#{args[0]._schemaname.matches('.*_application_subdoc') }")
+	public void onRead(def evt) {
+		def a = evt.result;
+		a.showchecklist = (chkListEm.find( [doctypeid: a.doctypeid]).select("c:{COUNT(*)}").val() > 0);
+		a.showfees = (itemAcctEm.find( [doctypeid: a.doctypeid]).select("c:{COUNT(*)}").val() > 0 );
+		a.showinfo = (varEm.find( [doctypeid: a.doctypeid]).select("c:{COUNT(*)}").val() > 0 );
+	}
+
+	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname.matches('.*_application_subdoc') }")
+	public void beforeRemoveApplicationSubdoc(def evt) {
+		def app = evt.args[0];
+
+		def vwSubdocEm = dynEm.lookup( app._schemaname );
+
+		def subdoc = vwSubdocEm.find( [objid: app.objid]).first();
+		def docorgid = subdoc.doctype?.org?.objid;
+		boolean b = false;
+
+		if( docorgid !=null ) {
+			if(docorgid==env.ORGID) b = true;
+		}
+		else {
+			if( env.ORGROOT == 1) b = true;
+		}
+		if(!b) 
+			throw new Exception("You cannot remove this document. Only the org associated with this document can remove this");
+	}
+
+
+} 

@@ -1,0 +1,22 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+import obo.facts.*;
+import java.text.*;
+
+public class OboConstructionCostRuleService  {
+
+	@Service("RuleExecutorService")
+	def ruleSvc;
+
+	@ProxyMethod
+	public def calc( def params ) {
+		def facts = [];
+		def ba = new BuildingInfo( params.app );
+		facts << ba;
+		facts << new OccupancyType( params.occupancytype );
+		def res = ruleSvc.execute( "oboconstructioncost", facts, null, null );
+		return ba.projectcost;
+	}
+
+}

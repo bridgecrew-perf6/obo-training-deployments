@@ -1,0 +1,361 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+
+class BuildingPermitPersistenceInterceptor {
+	
+	@DataContext("building_permit")
+	def appEm;
+
+	@DataContext("building_permit_task")
+	def appTaskEm;
+
+	@DataContext("obo_control")
+	def controlEm;
+
+	@DataContext("vw_building_permit")
+	def vwAppEm;
+
+	@DataContext("building_permit_entity")
+	def entityEm;
+
+	@DataContext("building_permit_payment")
+	def paymentEm;
+
+	@DataContext("building_permit_doc")
+	def subdocEm;
+
+	@DataContext("building_permit_requirement")
+	def reqEm;
+
+	@DataContext("obo_requirement_type")
+	def reqTypeEm;
+
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
+	@DataContext("building_permit_fee")
+	def feeEm;
+
+	@DataContext("obo_professional")
+	def professionalEm;
+
+	@DataContext("obo_professional_info")
+	def professionalInfoEm;
+
+	@DataContext("building_permit_rpu")
+	def rpuEm;
+
+	@DataContext("building_permit_info")
+	def appInfoEm;
+
+	@Service("OboAppnoGeneratorService")
+	def appSvc;
+
+	@Service("OboConstructionCostRuleService")
+	def costSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@Env
+	def env;
+
+	private def calcFixedCost( def app ) {
+		if( app.apptype == null || app.totalfloorarea==null || app.occupancytype==null ) {
+			def zapp = vwAppEm.find( [objid: app.objid ] ).select("apptype,totalfloorarea,occupancytype.*").first();
+			if(app.apptype==null) app.apptype = zapp.apptype;
+			if(app.totalfloorarea==null) app.totalfloorarea = zapp.totalfloorarea;
+			if(app.occupancytype==null) app.occupancytype = zapp.occupancytype;
+		}
+		//calculate the cost first before receiving		
+		def param = [:];
+		param.app = [apptype:app.apptype, totalfloorarea:app.totalfloorarea];
+		param.occupancytype = app.occupancytype;
+		return costSvc.calc( param );
+	}
+
+	private def formatAddress( def addr ) {
+		def lst = [];
+		lst << [addr.unitno, addr.bldgno, addr.bldgname ].findAll{it!=null}.join(" ");
+		lst << [addr.street, addr.subdivision ].findAll{it!=null}.join(",");
+		lst << [addr.barangay?.name, addr.citymunicipality, addr.province ].findAll{it!=null}.join(",");
+		return lst.findAll{it}.join(",");		
+	}
+
+	//check if 	professional exists in the obo_professional database
+    private void saveProfessional( def o ) {
+    	if(!o.objid) return;
+    	def p = professionalInfoEm.find( [objid: o.objid ]).first();
+    	if( !p ) {
+    		professionalInfoEm.create( o );
+    	}
+    	if(o.profid) {
+    		def pp = professionalEm.find( [objid: o.profid ] ).first();
+    		if(!pp) {
+    			def m = [:];
+    			m.objid = o.profid;
+    			m.prcno = o.prc.idno;
+    			m.profession = o.profession;
+    			m.infoid = o.objid;
+    			professionalEm.create( m );
+    		}
+    	}
+    }
+
+
+	//fire the workflow to start the process
+    private void startWorkflow( def app ) {
+		def p = [:];
+		p.processname = 'building_permit';
+		p.refid = app.objid;
+		p.startdate = dateSvc.getServerDate();
+		p.info = app;
+		p.assignee = [objid:env.USERID, name:env.FULLNAME];		
+		wfSvc.start(p);
+    }
+
+    //create task
+    private def saveTask( def app ) {
+    	//add end application task
+		def atask = [:];
+		atask.refid = app.objid;
+		atask.state =  app.task.state;
+		atask.dtcreated = dateSvc.getServerDate();
+		return appTaskEm.create( atask );
+    }
+
+    //create permit for capture
+    private def savePermit( def app ) {
+    	if(!app.permitno) return null;
+    	def doctype = doctypeEm.find( [objid: "BUILDING_PERMIT"] ).first();
+		def bp = [:];	
+		bp.appid = app.objid;
+		bp.doctype = doctype;	
+		bp.doctypeid = doctype.objid;		
+		bp.controlno = app.permitno;
+		bp.dtissued = app.permitdtissued;
+		bp.expirydate = app.permitexpirydate;
+		bp.issuedby = [ objid:env.USERID, name:env.FULLNAME];
+		bp.state = 3;
+		bp.template = doctype.template;
+		bp.endorserid = doctype.endorserid;
+		bp.approverid = doctype.approverid;
+		bp.reportheader = doctype.reportheader;
+		return controlEm.create( bp );
+    }
+
+    //save payment
+    private def savePayment( def app ) {
+    	if(!app.receiptno) return null;
+		def pmt = [:];
+		pmt.appid = app.objid;
+		pmt.refno = app.receiptno;
+		pmt.refdate = app.receiptdate;
+		pmt.amount = app.amtpaid;
+		pmt.reftype = "cashreceipt";
+		pmt.voided = 0;
+		return paymentEm.create( pmt );	
+    }
+
+    //save the accessories
+    private void saveAccessories( def app ) {
+    	if(!app.accessories) return;
+		def appdoc = [:]
+		appdoc.objid = app.objid +"_ACCESSORIES";
+		appdoc.appid = app.objid;
+		appdoc.state = 0;
+		appdoc.doctype = [ objid: 'ACCESSORIES' ];
+		app.amount = 0;		
+		subdocEm.create( appdoc );
+		app.accessories.each { acc->
+			def infos = app.infos.findAll{ it.parentid == acc.objid };
+			infos.each { info->
+				info.parentid = appdoc.objid;
+				info.appid = app.objid;
+				info.type = [name: info.name ];
+				appInfoEm.create( info );
+			}
+		}
+    }
+
+    private void saveAncillaryDocs( def app ) {
+    	if(!app.ancillaries) return;
+    	app.ancillaries.each { anc->
+    		//save the linked professionals
+    		saveProfessional( anc.designprofessional );
+			saveProfessional( anc.supervisor );
+
+			anc.appid = app.objid;
+			anc.doctype = [ objid: anc.permittypeid.toUpperCase() ];
+			anc.amount = 0;
+			anc.state = 0;
+			subdocEm.create( anc );
+			def infos = app.infos.findAll{ it.parentid == anc.objid };
+			infos.each { info->
+				info.appid = app.objid;
+				info.type = [name: info.name ];
+				appInfoEm.create( info );
+			}			
+		};
+    }
+
+	//save all documents that are auto create that does not exist above
+    private void saveInitialDocuments( def app ) {
+		subdocEm.getSubdocsToAutoCreate( [apptype:'building', appid: app.objid ]).each {
+			def sd = [:];
+			sd.appid = app.objid;
+			sd.doctype = [objid: it.objid];
+			sd.amount = 0;
+			sd.state = 0;
+			subdocEm.create( sd );			
+		}	
+    }
+
+	//save the requirements
+    private void saveRequirements( def app ) {
+		def reqTypes = reqTypeEm.where("permittype = 'building_permit' ").list();
+		reqTypes.each {
+			def r = [:];
+			r.appid = app.objid;
+			r.state = 0;
+			r.typeid = it.objid;
+			r.type = [objid: it.objid];
+			reqEm.create( r );
+		}
+    }
+
+    private void saveEntities( def app ) {
+    	if(!app.entities) return;
+    	app.entities.each {
+    		if( it.objid != app.applicantid ) {
+				it.appid = app.objid;
+				entityEm.create( it );    		
+    		}
+		}
+    }
+
+    private void saveRpus( def app ) {
+		app.rpus.each {
+			it.appid = app.objid;
+			it.owner = [objid: it.ownerid ];
+			rpuEm.create( it );
+		}
+    }
+
+	@Before(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'building_permit' }")
+	public void beforeCreateApplication(def evt) {
+		def app = evt.args[0];
+		if(!app.applicant) throw new Exception("Applicant is required");
+		if( app.txnmode == "CAPTURE" ) {
+			if(!app.appno) {
+				app.appno = appSvc.generate([apptype:"building_permit"]);
+			}	
+		}
+		if(app.trackingno) {
+			def orgno = env.ORGID;
+			if( !app.trackingno.startsWith(orgno) ) {
+				app.trackingno = orgno + "-" + app.trackingno;
+			}
+		}	
+
+		//check first all professionals if exist in the obo_professional table
+		app.objid = "BAPP" + new UID();
+		app.orgcode = env.ORGID;
+		app.occupancytypeid = app.occupancytype?.objid;
+		app.zoneclassid = app.zoneclass?.objid;
+		app.supervisorid = app.supervisor?.objid;
+		app.apptype = app.apptype?.toUpperCase();
+
+		if(!app.location?.text) {
+			app.location?.text = formatAddress( app.location );
+		}
+
+		//remove appid from applicant so it can be saved
+		app.applicant.remove("appid");
+		app.applicant = entityEm.create( app.applicant );
+		app.applicantid = app.applicant.objid;
+
+		//save the supervisor
+		saveProfessional( app.supervisor );		
+
+		app.createdby = [objid: env.USERID, name: env.FULLNAME];
+		app.dtcreated = dateSvc.getServerDate();
+		app.fixedcost = calcFixedCost( app ); 
+	}
+
+	@After(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'building_permit' }")
+	public void afterCreateApplication(def evt) {
+		def app = evt.args[0];
+		def result = evt.result;
+
+		//save appid of entity
+		entityEm.find( [objid: app.applicant.objid ] ).update( [appid: app.objid] );
+
+		if( app.txnmode == "CAPTURE" ) {
+			def tsk = saveTask( app );
+			def permit = savePermit( app );
+			savePayment( app );
+			def u = [:];
+			u.taskid = tsk.taskid;
+			if( permit?.objid ) u.controlid = permit.objid;
+			appEm.find([objid:app.objid]).update( u );
+
+			if( app.task.state == 'requirement-verification' ) {
+				saveRequirements( app );
+			}
+			if( app.task.state != 'end') {
+				saveInitialDocuments( app );
+			}
+		}
+		else {
+			saveEntities( app );
+			saveRpus( app );
+			saveAccessories( app );
+			saveAncillaryDocs( app );
+			saveInitialDocuments( app );			
+			saveRequirements( app );
+			startWorkflow( app );
+		}
+	}
+
+	//BUILDING PERMIT APPLICATION
+	@Before(pattern="PersistenceService.update", eval="#{ args[0]._schemaname == 'building_permit' }")
+	public void beforeUpdateApplication(def evt) {
+		def app = evt.args[0];
+		if( app.zoneclass?.objid ) {
+			app.zoneclassid = app.zoneclass.objid;
+		}
+		if( app.supervisor ) {
+			app.supervisorid = app.supervisor.objid;
+		}
+		if( app.totalfloorarea ) {
+			app.fixedcost = calcFixedCost( app );	
+		}
+		if( app.occupancytype?.objid  ) {
+			app.occupancytypeid = app.occupancytype?.objid;
+			app.fixedcost = calcFixedCost( app );		
+		}
+		if( app.applicant?.objid ) {
+			entityEm.find( [objid: app.applicant.objid]).update( app.applicant );
+		}
+		if( app.location ) {
+			app.location.text = formatAddress( app.location );
+		}
+	}
+
+	@After(pattern="PersistenceService.read", eval="#{ args[0]._schemaname == 'vw_building_permit' }")
+	public void afterOpenApplication(def evt) {
+		def p = evt.args[0];
+		def a = evt.result;
+		a.occupancytype.title = a.occupancytype.title?.toUpperCase();
+
+		//auto compute fees after opening:
+		a.amount = feeEm.find([appid:a.objid]).select("c:{SUM(amount)}").val();
+		a.payment = paymentEm.find([appid: a.objid ]).where("voided=0").orderBy("refdate DESC, refno DESC").first();
+	}
+
+
+}

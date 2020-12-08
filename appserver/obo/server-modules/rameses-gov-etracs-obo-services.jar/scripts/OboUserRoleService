@@ -1,0 +1,38 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+
+class OboUserRoleService {
+	
+	@Env
+	def env;
+
+	@Service(value='UserRoleService', connection="admin")
+    def roleSvc;
+
+	@ProxyMethod
+	public def getRoles(def o) {
+		def userid = o.userid;
+		def orgid = o.orgid;
+
+		if(!userid) userid = env.USERID;
+		if(!orgid) {
+	        if (env.ORGROOT == 1) {
+	            orgid = null;
+	        }   
+	        else {
+				orgid = env.ORGID;	        
+	        }
+	    }    
+        def userRoles = roleSvc.getRolesByUser([userid: userid, orgid:orgid]).findAll{ it.domain == "OBO" }*.role; 
+        return userRoles;
+	}
+
+
+	@ProxyMethod
+	public def getRolesString(def o) {
+		def userRoles = getRoles( o );
+		return "'" + userRoles.join("','") + "'";
+	}
+	
+}

@@ -1,0 +1,37 @@
+<schema>
+	<element tablename="vw_occupancy_permit_doc">
+		<field name="objid" primary="true" />
+		<field name="appid" required="true"/>
+		<field name="state" required="true" type="integer"/>
+
+		<complex name="doctype" ref="vw_obo_doctype" jointype="many-to-one" required="false">
+			<key field="doctypeid" target="objid" />
+		</complex>  
+
+		<field name="remarks"/>
+
+		<!-- copied from doctype -->
+		<field name="amount" type="decimal"/>
+		<field name="controlid" />
+
+		<!-- issuance -->
+		<field name="controlno" />
+		<field name="dtissued" />
+		<field name="issuedby_name" />
+		<field name="issuedby_objid" />
+		<field name="expirydate" />
+		<field name="template" />
+		<field name="issue_remarks"/>
+
+		<field name="appstate" />
+		<field name="appuserid" />
+
+		<field name="org_objid" />
+		<field name="sectionid" />
+
+		<complex name="app" ref="vw_occupancy_permit" jointype="many-to-one">
+			<key field="appid" target="objid" />			
+		</complex>	
+
+	</element>
+</schema>

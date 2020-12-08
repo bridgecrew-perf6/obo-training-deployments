@@ -1,0 +1,11 @@
+<schema>
+	<element tablename="obo_checklist_master">
+		<field name="objid" primary="true" caption="Name" visible="true"/>
+		<field name="doctypeid" />	
+		<field name="indexno" searchable="true" width="80" maxWidth="100"/>		
+		<field name="title" searchable="true"/>
+		<field name="category"  width="200" maxWidth="250"/>
+		<field name="params" />
+	</element>
+</schema>
+		

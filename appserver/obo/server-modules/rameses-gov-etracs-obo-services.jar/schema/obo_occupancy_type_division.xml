@@ -1,0 +1,8 @@
+<schema>
+	<element tablename="obo_occupancy_type_division">
+		<field name="objid" primary="true" visible="true" caption="Division" searchable="true" />
+		<field name="groupid" caption="Group" />
+		<field name="title" />
+	</element>
+</schema>
+		

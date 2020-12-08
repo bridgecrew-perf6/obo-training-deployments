@@ -1,0 +1,73 @@
+import com.rameses.annotations.*; 
+import java.rmi.server.*;
+
+class OboRequirementService {
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("ControlnoGeneratorService")
+	def controlNoSvc;
+
+	@DataContext(dynamic=true)
+	def db;
+
+	@DataContext("obo_doctype")
+	def doctype;
+
+	@Env
+	def env;
+
+	@ProxyMethod
+	public def createTransmittal( def o ) {
+		if(!o.appid) throw new Exception("appid is required in OboRequirementService.createTransmittal");
+		if(!o.apptype) throw new Exception("Please include apptype in OboRequirementService.createTransmittal")
+
+		def transmittalEm = db.lookup( o.apptype + "_transmittal");
+		def	itemEm = db.lookup( o.apptype + "_requirement" ); 
+
+		//validate first if there are existing open items that need to be transmitted
+		def c = itemEm.select("c:{COUNT(*)}").find([appid:o.appid]).where("state = 0").val();
+		if( c>0) throw new Exception("All requirements must be checked first");			
+		c = itemEm.select("c:{COUNT(*)}").find([appid:o.appid]).where("supersederid IS NULL AND state = 2 AND transmittalid IS NULL").val();
+		if( c<=0) throw new Exception("There must be at least one requirement that needs to be revised");			
+		def docid = o.apptype.toUpperCase() + "_REQUIREMENT_TRANSMITTAL";
+		def doc = doctype.find( [objid: docid] ).first();
+		if(!doc) throw new Exception("doctype " + docid + " not found");
+		def pattern = doc.controlnopattern;
+
+		if(!pattern) throw new Exception("Please define controlnopattern in " + docid );
+		def t = [:];
+		t.objid = controlNoSvc.getNextNo( pattern );
+		t.appid = o.appid;
+		t.type = "requirement";
+		t.createdby = [objid: env.USERID, name: env.FULLNAME ];
+		t.dtcreated = dateSvc.getServerDate();
+		t.taskid = o.taskid;
+		t.state = 0;
+		t.approverid = doc.approverid;
+		t.endorserid = doc.endorserid;	
+		t.template = doc.template;
+		t.reportheader = doc.reportheader;	
+		transmittalEm.create( t );
+		itemEm.find([appid: o.appid]).where("supersederid IS NULL AND state=2 AND transmittalid IS NULL").update( [transmittalid: t.objid] );
+		return t;	
+	}
+
+	@ProxyMethod
+	public void validateApproval( def o ) {
+		if(!o.appid) throw new Exception("appid is required in OboRequirementService.validateApproval");
+		if(!o.apptype) throw new Exception("Please include apptype in OboRequirementService.validateApproval")
+
+		//check if there are pending findings
+		def	reqEm = db.lookup( o.apptype + "_requirement" ); 
+		
+		def t = reqEm.find( [appid: o.appid ] ).select("c:{COUNT(*)}").where("state=0").val();
+		if( t > 0) throw new Exception("You must check first all requirements.");
+		t = reqEm.find( [appid: o.appid ] ).select("c:{COUNT(*)}").where("state=2 AND supersederid IS NULL").val();
+		if( t > 0) throw new Exception("There are unresolved requirements. Please click Send for revision instead");
+	}
+
+
+
+}	

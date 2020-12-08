@@ -1,0 +1,23 @@
+<schema>
+	<element tablename="building_permit_requirement">
+		<field name="objid" primary="true" prefix="BLDPMTREQ"/>
+		<field name="appid" />
+		<field name="parentid" />
+
+		<!-- 0=not touched 1=pass, 2=for-revision 3=not applicable-->
+		<field name="state" />
+		
+		<field name="remarks" />
+		<field name="reviewer_objid" />
+		<field name="reviewer_name" />
+		<field name="dtreviewed" />
+
+		<field name="supersederid" />
+		<field name="transmittalid" />
+
+		<complex name="type" ref="obo_requirement_type" jointype="many-to-one" includefields="objid,title,sortorder" required="true">
+			<key field="typeid" target="objid"/>
+		</complex>
+	</element>
+</schema>
+

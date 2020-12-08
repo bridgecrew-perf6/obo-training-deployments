@@ -1,0 +1,7 @@
+<schema>
+	<element tablename="vw_occupancy_inspection_itemaccount">
+		<field name="objid" primary="true"/>
+		<field name="title" />
+		<field name="typeid" />
+	</element>
+</schema>	

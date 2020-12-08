@@ -1,0 +1,18 @@
+<schema>
+	<element tablename="occupancy_permit_info">
+		<field name="objid" primary="true" prefix="OBOOCCINFO"/>
+		<field name="appid" required="true"/>
+		<field name="parentid" required="true"/>
+		<field name="name" required="true"/>
+		<field name="stringvalue" />
+		<field name="decimalvalue" datatype="decimal"/>
+		<field name="intvalue" datatype="integer"/>
+		<field name="datevalue" datatype="date"/>
+		<field name="booleanvalue" datatype="boolean"/>
+
+		<complex name="type" ref="obo_variable" jointype="many-to-one" required="true">
+			<key field="name" target="objid" />
+		</complex>	
+	</element>
+</schema>
+

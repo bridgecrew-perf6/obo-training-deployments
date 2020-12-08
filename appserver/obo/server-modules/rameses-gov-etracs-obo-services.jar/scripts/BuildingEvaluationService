@@ -1,0 +1,106 @@
+import com.rameses.annotations.*;
+
+class BuildingEvaluationService {
+	
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@DataContext("vw_building_permit")
+	def vwAppEm;
+
+	@DataContext("building_evaluation")
+	def evalEm;
+
+	@DataContext("vw_building_evaluation")
+	def vwEvalEm;
+
+	@Env
+	def env;
+
+	//this is when creating an evaluation on the fly 
+	@ProxyMethod
+	public def create(def o ) {
+		if(!o.appno) throw new Exception("appno is required");
+
+		def app = vwAppEm.find( [appno: o.appno ]).first();
+
+		if(!app) throw new Exception("Application not found");
+		if( app.task.state.toLowerCase() != 'trade-evaluation' ) 
+			throw new Exception("Please ensure that current state must be in trade-evaluation");
+		
+		//check first if current state is trade-evaluation
+		o.appid = app.objid;
+		o.appdate = dateSvc.getServerDate();
+
+		o = evalEm.create( o )
+
+		//fire the workflow...
+		def f = [:];
+		f.processname = 'building_evaluation';
+		f.notificationid = 'building_evaluation:' + o.typeid.toLowerCase();
+		f.refid = o.objid;
+		f.startdate = o.appdate;
+		f.info = [:];
+		wfSvc.start( f );
+	} 
+
+	@ProxyMethod
+	public def startEvaluationTasks(  def o ) {
+		if(!o.appid) throw new Exception("appid is required in BuildingEvaluationService.startEvaluationTasks");
+		if(!o.state) throw new Exception("state is required in BuildingEvaluationService.startEvaluationTasks");
+
+		def appid = o.appid;
+		def state = o.state;
+
+		def mlist = evalEm.getEvaluationsToActivate( [appid: appid, state: state ] )*.objid;
+		def list = [];
+		if( mlist ) {
+			def dt = dateSvc.getServerDate();
+			mlist.each {
+				def m = [appid: appid, typeid: it ]
+				m = evalEm.create( m );
+				def f = [:];
+				f.processname = 'building_evaluation';
+				f.refid = m.objid;
+				f.startdate = dt;
+				f.info = [ type: it, appid: appid ];
+				wfSvc.start(f);		
+
+				//load notifications		
+				list << it.toLowerCase();
+			}
+		}	
+		return list;
+	}
+
+	@ProxyMethod
+	public def reactivateEvaluationTasks(  def o ) {
+		if(!o.appid) throw new Exception("appid is required in BuildingEvaluationService.reactivateEvaluationTasks");
+		def mlist = vwEvalEm.select("objid,taskid,typeid").find( [appid: o.appid ] ).where( " task.state = 'for-revision' " ).list();
+		def list = [];
+		if( mlist ) {
+			def dt = dateSvc.getServerDate();
+			mlist.each {
+				def f = [:];
+				f.processname = 'building_evaluation';
+				f.refid = it.objid;
+				f.taskid = it.taskid;
+				f.startdate = dt;
+				f.action = "reactivate";
+				f.info = [:];
+				wfSvc.signal(f);
+
+				//load notifications		
+				list << it.typeid.toLowerCase();	
+			}		
+		}
+		return list;
+	}
+
+
+
+	
+}

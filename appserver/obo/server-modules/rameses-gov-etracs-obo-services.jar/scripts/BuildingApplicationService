@@ -1,0 +1,57 @@
+import com.rameses.annotations.*;
+
+class BuildingApplicationService {
+	
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext("obo_doctype")
+	def docTypeEm;
+
+	@DataContext("building_permit_doc")
+	def subdocEm;
+
+	@DataContext("obo_control")
+	def issEm;
+
+	@DataContext("vw_building_permit")
+	def vwAppEm;
+
+	@DataContext("vw_building_evaluation")
+	def vwEvalEm;
+
+
+	@Env
+	def env;
+
+	@ProxyMethod
+	public def verifyApp( def o  ) {
+		def app = vwAppEm.find( o ).first();
+		if(!app) throw new Exception("Application does not exist");
+		return [trackingno:app.trackingno, appno:app.appno, email: app.contact.email, mobileno: app.contact.mobileno ];
+	}
+
+	@ProxyMethod
+	public def findAppStatus( def o  ) {
+		def app = vwAppEm.find( o ).first();
+		if(app.task.tracktime !=1) {
+			app.task.assignee = [name:"Applicant"];
+		}
+
+		if( app.task.state == 'trade-evaluation' ) {
+			app.subtasks = vwEvalEm.find( [appid: app.objid ]).where("task.state NOT IN ('start','end')").list();
+		}
+		else {
+			app.subtasks = [];
+		}
+		return app;
+	}
+	
+	@ProxyMethod
+	public def getProfessionalList(def o) {
+		return vwAppEm.getProfessionalList( [appid: o.objid ] );
+	}
+
+
+
+}

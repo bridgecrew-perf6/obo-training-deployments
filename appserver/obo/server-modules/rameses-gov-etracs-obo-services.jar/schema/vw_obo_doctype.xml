@@ -1,0 +1,24 @@
+<schema>
+	<element tablename="vw_obo_doctype">
+		<field name="objid" primary="true"/>
+		<field name="title" />
+		<field name="sectionid" />
+		<field name="sortorder" />
+		<field name="type" />
+		<field name="template" />
+		<field name="autocreate" />
+		<field name="issuetype" />
+		<field name="requirefee" />
+		<field name="controlnopattern" />
+		<field name="subtypeof" />
+		<field name="apptype" />
+		<field name="org_objid" />
+		<field name="org_name" />
+		<field name="endorserid" />
+		<field name="approverid" />
+		<field name="refdoc"/>
+	</element>
+</schema>	
+
+
+

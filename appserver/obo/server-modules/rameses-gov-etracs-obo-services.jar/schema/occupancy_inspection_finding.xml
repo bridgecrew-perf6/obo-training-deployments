@@ -1,0 +1,24 @@
+<schema>
+	<element tablename="occupancy_inspection_finding">
+		<field name="objid" primary="true" prefix="OCCPMTFND"/>
+		<field name="appid" required="true"/>
+		<field name="parentid" />
+		<field name="rootid" />
+
+		<field name="particulars" />
+		<field name="dtcreated" />
+		<field name="createdby_objid" />
+		<field name="createdby_name" />
+
+		<!-- 0=editable 1=noneditable must override 2=open -->
+		<field name="state" />
+		<field name="supersederid" />
+		<field name="transmittalid" />
+
+		<complex name="parent" ref="vw_occupancy_inspection" jointype="many-to-one" includefields="type.*" required="false">
+			<key field="parentid" target="objid"/>
+		</complex>		
+		
+		<field name="attachment" hidden="true"/>
+	</element>
+</schema>

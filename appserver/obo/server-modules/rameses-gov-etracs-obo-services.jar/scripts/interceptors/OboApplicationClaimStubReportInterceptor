@@ -1,0 +1,77 @@
+import com.rameses.annotations.*; 
+
+/****************************************************************
+* This should apply to both Building and Occupancy Claim Stub
+******************************************************************/
+class OboApplicationClaimStubReportInterceptor {
+	
+	@DataContext(dynamic=true)
+	def db;
+
+	@After(pattern="FormReportService.getData", eval="#{args[0].reportid?.matches('.*_claimstub') }")
+	public void getClaimStubReport( def evt ) {
+		def p = evt.args[0];
+		def result = evt.result;
+		def id = p.parameters.objid;
+
+		def appEm, taskEm, permitType;
+		if( p.reportid.startsWith("building") ) {
+			appEm = db.lookup( "vw_building_permit" );
+			taskEm = db.lookup( "building_permit_task" );
+			permitType = "BUILDING PERMIT";
+		}
+		else if(p.reportid.startsWith("occupancy")){
+			appEm = db.lookup( "vw_occupancy_permit" );
+			taskEm = db.lookup( "occupancy_permit_task" );
+			permitType = "OCCUPANCY PERMIT";			
+		}
+		else {
+			throw new Exception("unsupported claim stub " + p.reportid );
+		}
+
+		def ea = appEm.find( [objid: id ] ).first();
+		def r = taskEm.find( [refid: id, state: 'requirement-verification'] ).orderBy("dtcreated DESC").first();
+		if( r ) {
+			ea.startdate = r.startdate;
+			ea.enddate = r.enddate;
+			ea.receiver = r.assignee;		
+			ea.dtreceived = r.enddate;			
+		};
+		ea.permittype = permitType;
+		result.data = ea;
+	}	
+
+	@Before(pattern="JasperEmailQueueService.send", eval="#{args[0].reportid?.matches('.*_claimstub') }")
+	public void beforeQueueEmail( def evt ) {
+		def p = evt.args[0];
+		def appEm;
+		if( p.reportid.startsWith("building") ) {
+			appEm = db.lookup( "vw_building_permit" );
+		}
+		else {
+			appEm = db.lookup( "vw_occupancy_permit" );
+		}
+		def ea = appEm.find( [objid: p.refid ] ).first();
+		p.to = ea.contact.email;
+		p.info = ea;
+	}
+
+    @Before(pattern="JasperReportEmailService.send", eval="#{ args[0].reportid.matches('.*_claimstub') }", index=-10000)
+    public void emailClaimstub(def evt) {
+        def o = evt.args[0];
+        def refid = o.refid;
+        o.attachments = [
+            [ 	title: "ClaimStub" + ".pdf", 
+            	reportid: o.reportid, 
+            	parameters: [objid: refid ], 
+            	template: "reports/obo/application_claimstub" 
+            ]
+        ];
+        o.to = o.to;
+        o.subject = o.subject;
+        o.message = o.message;
+        o.connection = "obo-email-server";
+    } 
+
+
+}

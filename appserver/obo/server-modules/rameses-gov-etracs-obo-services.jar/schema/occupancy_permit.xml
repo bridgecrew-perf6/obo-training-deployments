@@ -1,0 +1,66 @@
+<schema>
+	<element tablename="occupancy_permit">
+		<field name="objid" primary="true" prefix="OCCPERM" visible="true"/>
+		<field name="orgcode" />
+		<field name="appno" searchable="true" indexed="true" caption="App No"/>
+
+		<field name="trackingno" searchable="true" indexed="true"/>
+		<field name="appdate" type="date"/>
+
+		<!-- FULL OR PARTIAL -->
+		<field name="apptype" required="true"/>
+		<field name="txntype" required="true"/>
+		<field name="applicantid" />
+
+		<complex name="bldgpermit" ref="vw_building_permit" jointype="many-to-one" required="true">
+			<key field="bldgpermitid" target="objid" />
+		</complex>	
+
+		<field name="contact_name" required="true"/>
+		<field name="contact_detail" />
+		<field name="contact_email" required="true"/>
+		<field name="contact_mobileno"/>
+
+		<field name="occupancytypeid" required="true"/>
+		
+		<field name="actualnumunits" type="integer"/>
+		<field name="actualtotalfloorarea" type="decimal"/>
+		<field name="actualnumfloors" type="integer"/>
+		<field name="actualheight" type="decimal"/>
+
+		<!-- fixed cost is a computed value -->
+		<field name="totalmaterialcost" type="decimal"/>
+		<field name="totaldirectlaborcost" type="decimal"/>
+		<field name="totalequipmentcost" type="decimal"/>
+		<field name="totalothercost" type="decimal"/>
+
+		<complex name="supervisor" ref="obo_professional_info" jointype="many-to-one" required="false">
+			<key field="supervisorid" target="objid" />
+		</complex> 
+
+		<field name="dtactualstarted" />
+		<field name="dtactualcompleted" />
+		<field name="txnmode" />
+		<field name="taskid" />
+		<field name="inspectiondate" type="timestamp" />
+
+		<field name="contractor_name" />
+		<field name="contractor_address" />
+		<field name="contractor_pcab_idno" />
+		<field name="contractor_pcab_dtvalid" />
+		<field name="contractor_tin" />
+		<field name="contractor_manager_name" />
+		<field name="contractor_manager_email" />
+
+		<field name="controlid" />
+
+		<field name="actualprojectcost" type="decimal"/>
+		<field name="actualfixedcost" type="decimal"/>
+
+		<!-- OCCUPANCY STATE: 1 = Not yet operating  2=already operating -->
+		<field name="occupancystate"  type="integer"/>
+		<field name="amount" type="decimal"/>
+
+	</element>
+</schema>
+

@@ -1,0 +1,64 @@
+<schema>
+	<element tablename="building_permit">
+		<field name="objid" primary="true" prefix="OBOBP" visible="true"/>
+		<field name="orgcode" />
+		<field name="appno" searchable="true" indexed="true"/>
+		<field name="apptype" required="true"/>
+		<field name="appdate" type="date"/>
+
+		<field name="trackingno" searchable="true" indexed="true"/>
+		<field name="taskid" />
+		<field name="controlid" />
+		<field name="txnmode" />
+
+		<!-- VALUES ARE SIMPLE OR COMPLEX -->
+		<field name="txntype" />
+
+		<field name="contact_name" />
+		<field name="contact_detail" />
+		<field name="contact_email" />
+		<field name="contact_mobileno"/>
+
+		<field name="applicantid"/>
+		<field name="title" />
+		<field name="description" />
+		<field name="occupancytypeid" required="true"/>
+		<field name="numunits" type="integer"/>
+		<field name="numfloors" type="integer"/>
+		<field name="totalfloorarea" type="decimal"/>
+		<field name="height" type="decimal"/>
+
+		<!-- fixed cost is a computed value -->
+		<field name="fixedcost" type="decimal"/>
+		<field name="projectcost" type="decimal"/>
+
+		<field name="dtproposedconstruction" type="date" />
+		<field name="dtexpectedcompletion" type="date"/>
+
+		<field name="zoneclassid" />
+		<field name="zone" />
+
+		<field name="location_lotno" />
+		<field name="location_blockno" />
+
+		<field name="location_unitno" />
+		<field name="location_bldgno" />
+		<field name="location_bldgname" />
+		
+		<field name="location_subdivision" />
+
+		<field name="location_street" />
+		<field name="location_barangay_name" />
+		<field name="location_barangay_objid" />
+
+		<complex name="worktypes" type="list" serializer="default" required="false"/>
+		<field name="supervisorid" />
+
+		<field name="createdby_objid" />
+		<field name="createdby_name" />
+		<field name="dtcreated" type="timestamp"/>
+
+		<field name="amount" type="decimal"/>
+	</element>
+</schema>
+

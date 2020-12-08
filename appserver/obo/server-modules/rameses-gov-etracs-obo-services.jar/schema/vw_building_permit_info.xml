@@ -1,0 +1,21 @@
+<schema>
+	<element tablename="vw_building_permit_info">
+		<field name="objid" primary="true"/>
+		<field name="appid" />
+		<field name="parentid" />
+		<field name="doctypeid" />
+		<field name="name" />
+		<field name="caption" />
+		<field name="stringvalue" />
+		<field name="decimalvalue" />
+		<field name="intvalue" />
+		<field name="datevalue" />
+		<field name="booleanvalue" />
+		<field name="datatype" />
+		<field name="unit" />
+		<field name="caption" />
+		<field name="category" />
+		<field name="sortorder" />
+		<field name="remarks" />
+	</element>
+</schema>	

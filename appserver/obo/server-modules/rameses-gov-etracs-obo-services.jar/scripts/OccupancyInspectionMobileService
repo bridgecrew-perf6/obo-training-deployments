@@ -1,0 +1,116 @@
+import com.rameses.annotations.*; 
+
+public class OccupancyInspectionMobileService {
+	
+	@DataContext("occupancy_inspection_finding")
+	def findingEm;
+
+	@DataContext("occupancy_inspection")
+	def inspEm;
+
+	@DataContext("vw_occupancy_permit")
+	def vwApp;
+
+	@DataContext("vw_occupancy_inspection")
+	def vwInsp;
+
+	@DataContext("vw_building_permit_info")
+	def vwBldgInfoEm;
+
+	@DataContext("occupancy_permit_info")
+	def occInfoEm;
+
+	@Env
+	def env;
+
+
+	@ProxyMethod
+	public def download( def o ) {
+		def userid = o.userid;
+		def taskList = vwInsp.select("objid,appid,typeid,type.*,task.*,task.assignee.*").where(" app.task.state = 'inspection' AND task.assignee.objid = :userid AND uploaded=0", [userid: userid]).list();
+
+		if( !taskList ) 
+			return [ status: "ERROR", message: "There are no tasks for download" ];
+
+
+		def appGrps = taskList.groupBy{ it.appid };
+
+		def list = [];
+		appGrps.each{ appid, tasks ->
+			def app = vwApp.find( [objid: appid] ).first();
+			app.sections = tasks.collect{ tsk->
+				[ objid: tsk.objid, typeid: tsk.typeid, 
+				title: tsk.type.title, sortorder: tsk.type.sortorder, assignee: tsk.task.assignee
+				 ];
+			};
+
+			//if there is no appid then for sure there will be no infos
+			if( app.bldgpermit.appid ) {
+				app.sections.each { sec->
+					sec.infos = [];
+					def appInfos = vwBldgInfoEm.find( [appid: app.bldgpermit.appid, typeid: sec.typeid ] ).list();
+					appInfos?.each { info->
+						def m = [caption: info.caption, datatype:info.datatype, 
+							name: info.name, category: info.category, unit: info.unit];
+						if( m.datatype == 'decimal') m.value = info.decimalvalue;
+						else if( m.datatype == 'integer') m.value = info.intvalue;
+						else if( m.datatype == 'boolean') m.value = true;
+						else if( m.datatype == 'date') m.value = info.datevalue;
+						else m.value = info.stringvalue;	
+						m.actualvalue = m.value;
+						sec.infos << m;
+					}	
+					//load also other infos not in the list so it can be selected just in case
+					sec.otherinfos = inspEm.getOtherInfos(  [typeid: sec.typeid, appid: app.bldgpermit.appid ] );
+				}
+			}
+			list << app;
+		} 
+		return list;
+	}
+
+	@ProxyMethod
+	public def upload( def app ) {
+		if(!app.objid) return [status:"ERROR", message: "appid is required in upload"];
+		if(!app.userid) return [status:"ERROR", message: "userid is required in upload"];
+
+		def userid = app.userid;
+		
+		//clear first all infos per section
+		app.sections.each { section->
+
+			section.infos.each { info->
+				if( !info.value ) info.value = null;
+				if( !info.actualvalue ) info.actualvalue = null;
+				if( info.value != info.actualvalue ) {
+					def m = [:];
+					m.appid = app.objid;
+					m.parentid = section.objid;
+					m.name = info.name;
+					m.type = [name: info.name ];
+					if( info.datatype == 'decimal') m.decimalvalue = info.actualvalue;
+					else if( info.datatype == 'integer') m.intvalue = info.actualvalue;
+					else if( info.datatype == 'boolean') m.booleanvalue = true;
+					else if( info.datatype == 'date') m.datevalue = info.actualvalue;
+					else m.stringvalue = info.actualvalue;
+					occInfoEm.create( m );
+				}
+			}
+			section.findings.each { fnd->
+				def f = [:];
+				f.appid = app.objid;
+				f.parentid = section.objid;
+				f.particulars = fnd.description;
+				f.attachment = fnd.attachment;
+				f.state = 2;
+				f.createdby = section.assignee;
+				findingEm.create( f );
+			}
+
+			//update the inspection mark as uploaded so it cant be loaded again
+			inspEm.find( [objid: section.objid]).update( [uploaded: 1]);
+		}
+	}
+
+
+}

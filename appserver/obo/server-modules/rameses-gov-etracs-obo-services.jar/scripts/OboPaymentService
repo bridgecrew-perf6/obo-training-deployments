@@ -1,0 +1,56 @@
+import com.rameses.annotations.*; 
+
+class OboPaymentService {
+
+	@Service("WorkflowTaskService")
+	def wfSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext(dynamic=true)
+	def dynaDb;
+
+	@ProxyMethod
+	public void postPayment( o ) { 
+		if(!o.appid) throw new Exception("OboPaymentService.postPayment error. appid is required")
+		if(!o.apptype) throw new Exception("OboPaymentService.postPayment error. apptype is required")
+		if(!o.txndate) o.txndate = dateSvc.getServerDate();
+		if(!o.txnmode) o.txnmode = "CAPTURE";
+		if(!o.refno) o.refno = o.receiptno;
+		if(!o.refdate) o.refdate = o.receiptdate;
+		if(!o.reftype) o.reftype = "cashreceipt";
+		if(!o.refid) o.refid = o.objid;
+
+		//create the payment
+		def pmt = [:];
+		pmt.appid = o.appid;
+		pmt.refid = o.refid;
+		pmt.refno = o.refno;
+		pmt.reftype = o.reftype;
+		pmt.refdate = o.refdate;
+		pmt.amount = o.amount;
+		pmt.voided = 0;
+
+		def zapptype = null;
+		if(o.apptype == "building") {
+			zapptype = "building_permit";
+		}
+		else if( o.apptype == "occupancy") {
+			zapptype = "occupancy_permit";
+		}
+
+		def pmtEm = dynaDb.lookup( zapptype +'_payment' ); 
+		pmtEm.create( pmt );
+
+		def appFeeEm = dynaDb.lookup( zapptype +'_fee' );  
+		appFeeEm.find([ appid: o.appid ]).update([ amtpaid: "{amount}" ]); 
+
+		//fire the workflow for release.
+		def m = [:];
+		m.processname = zapptype;
+		m.action = "post-payment";
+		m.refid = o.appid;
+		wfSvc.signal( m ); 
+	} 
+} 

@@ -1,0 +1,10 @@
+<schema>
+	<element tablename="vw_obo_doctype_itemaccount">
+		<field name="objid" primary="true"/>
+		<field name="title" />
+		<field name="typeid" />
+	</element>
+</schema>	
+
+
+

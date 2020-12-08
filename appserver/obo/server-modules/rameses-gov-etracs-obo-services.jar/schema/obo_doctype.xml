@@ -1,0 +1,51 @@
+<schema>
+	<element tablename="obo_doctype">
+		<field name="objid" primary="true" visible="true" searchable="true"/>
+		<field name="title" searchable="true"/>
+		<field name="sortorder" />
+
+		<!-- Type is any of the ff: ANCILLARY,CLEARANCE,CHECKLIST -->
+		<field name="type" indexed="true"/>
+
+		<complex name="section" ref="obo_section" jointype="many-to-one" required="false">
+			<key field="sectionid" target="objid" />
+		</complex>	
+
+		<!-- if 1 this would auto create when the application is created -->
+		<field name="autocreate" />
+
+		<!-- if 1 this would ensure before approval of evaluation there must be at least one feeitem -->
+		<field name="requirefee" />
+
+		<!-- if not null, this would allow display of the report -->
+		<field name="template" />
+
+		<!--  0 - no issuance required, 1= auto issue,  2=manual issue -->
+		<field name="issuetype"  type="integer"/>
+
+		<field name="appnopattern"/>
+		<field name="controlnopattern"/>
+
+		<!-- this is dependent on a particular document. Example fire clearance checklist is dependent on fsec -->
+		<field name="subtypeof"/>
+
+		<!-- This refers to an accompanying document of the specified refdoc -->
+		<field name="refdoc"/>
+
+		<!-- apptype is either building or occupancy -->
+		<field name="apptype" caption="App Type"/>
+
+		<field name="system"/>
+		<field name="role"/>
+
+
+		<complex name="endorser" ref="sys_signature" jointype="many-to-one" required="false" includefields="userid,displayname,position">
+			<key field="endorserid" target="objid"/>
+		</complex>
+		<complex name="approver" ref="sys_signature" jointype="many-to-one" required="false" includefields="userid,displayname,position">
+			<key field="approverid" target="objid"/>
+		</complex>
+			
+
+	</element>
+</schema>

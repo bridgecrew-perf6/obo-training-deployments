@@ -1,0 +1,91 @@
+<schema>
+	<element tablename="vw_occupancy_permit">
+		<field name="objid" primary="true"/>
+		<field name="appno" />
+		<field name="apptype" />
+		<field name="txntype" />
+		<field name="appdate" type="date"/>
+		
+		<field name="orgcode" />
+		<field name="trackingno" />
+		<field name="contact_name" />
+		<field name="contact_detail" />
+		<field name="contact_email" />
+		<field name="contact_mobileno" />
+		<field name="taskid" />
+		<field name="txnmode" />
+		<field name="totalmaterialcost" type="decimal"/>
+		<field name="totaldirectlaborcost"  type="decimal"/>
+		<field name="totalequipmentcost"  type="decimal"/>
+		<field name="totalothercost"  type="decimal"/>
+
+		<field name="actualprojectcost"  type="decimal"/>
+		<field name="actualfixedcost"  type="decimal"/>
+
+		<field name="actualnumunits" />
+		<field name="actualtotalfloorarea" />
+		<field name="actualheight" />
+		<field name="actualnumfloors" />
+		<field name="dtactualstarted" />
+		<field name="dtactualcompleted" />
+
+		<complex name="bldgpermit" ref="vw_building_permit" jointype="many-to-one" required="true">
+			<key field="bldgpermitid" target="objid" />
+		</complex>
+
+		<complex name="applicant" ref="occupancy_permit_entity" jointype="many-to-one" required="true">
+			<key field="applicantid" target="objid" />
+		</complex>	
+
+		<complex name="supervisor" ref="obo_professional_info" jointype="many-to-one" required="false">
+			<key field="supervisorid" target="objid" />
+		</complex> 
+
+		<field name="task_state" />
+		<field name="task_startdate" />
+		<field name="task_enddate" />
+		<field name="task_assignee_objid" />
+		<field name="task_assignee_name" />
+		<field name="task_actor_objid" />
+		<field name="task_actor_name" />
+		<field name="task_title" />
+
+		<field name="occupancytype_objid" />
+		<field name="occupancytype_title" />
+		<field name="occupancytype_division_objid" />
+		<field name="occupancytype_division_title" />
+		<field name="occupancytype_group_objid" />
+		<field name="occupancytype_group_title" />
+
+		<field name="contractor_name" />
+		<field name="contractor_address" />
+		<field name="contractor_pcab_idno" />
+		<field name="contractor_pcab_dtvalid" />
+		<field name="contractor_tin" />
+		<field name="contractor_manager_name" />
+		<field name="contractor_manager_email" />
+
+		<field name="inspectiondate" type="timestamp" />
+
+		<field name="controlid" />
+		<field name="controlno" />
+		<field name="dtissued" />
+		<field name="expirydate" />
+		<field name="issuedby_name" />
+		<field name="approverid" />
+		<field name="endorserid" />		
+		<field name="template" />
+		<field name="reportheader" />
+		<field name="txntype" />
+
+		<!-- this is added to make reports easier -->
+		<field name="title" />
+		<field name="location_text" />
+		<field name="occupancystate" />
+		<field name="amount" type="decimal"/>
+
+	</element>
+</schema>	
+
+
+
