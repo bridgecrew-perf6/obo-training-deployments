@@ -2,8 +2,8 @@ version: "3"
 
 services:
 
-  mail-primary: 
-    container_name: mail-primary
+  mail-obo: 
+    container_name: mail-obo
     image: "ramesesinc/mail-server:latest"
     restart: always
     logging: 

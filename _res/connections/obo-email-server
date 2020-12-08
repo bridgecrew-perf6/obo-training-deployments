@@ -1,3 +1,4 @@
 provider=email
 mail.smtp.host=${app_server_ip}
+mail.smtp.port=26
 mail.from=filipizenmailer@gmail.com
