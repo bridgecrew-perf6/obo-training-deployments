@@ -4,6 +4,7 @@
 .osiris_pid
 .shutdown_pid
 _custom
+_custom*
 Thumbs.db
 updates-dev.xml
 docker-compose-test.yml
