@@ -143,18 +143,17 @@ class BuildingPermitWorkflowInterceptor {
 		def dt = dateSvc.getServerDate();
 
 		def docList = vwSubdocEm.find( [appid: appid]).where("doctype.issuetype = 2 AND app.task.state = 'releasing' AND controlid IS NULL AND doctype.refdoc IS NULL").list()*.doctype?.objid;	
-		
 		p._notificationlist = [];
 		docList.each {
 			p._notificationlist <<  'building_permit_doc:' + it.toLowerCase();				
 		}
-		p._notificationlist << "obo";
 	}
 
 	//this should fire after all the tasks have been saved
 	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0]._notificationlist!=null }", index=50000) 
 	public void notifyOtherTasks( def evt ) {
 		def p = evt.args[0];
+		p._notificationlist << "obo";
 		notificationSvc.notify( p._notificationlist );
 	}
 
