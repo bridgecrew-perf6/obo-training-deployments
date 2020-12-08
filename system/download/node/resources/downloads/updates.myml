@@ -38,7 +38,7 @@ app:
       - { order: 154, version: 2.55, file: "modules/shared/rameses-rules-mgmt.jar" }
       - { order: 155, version: 2.55, file: "modules/shared/rameses-workflow-mgmt.jar" }
       - { order: 156, version: 2.56, file: "modules/shared/rameses-enterprise.jar" }
-      - { order: 158, version: 2.55, file: "modules/shared/rameses-enterprise-admin.jar" }
+      - { order: 158, version: 2.56, file: "modules/shared/rameses-enterprise-admin.jar" }
       - { order: 160, version: 2.55, file: "modules/shared/rameses-enterprise-financial.jar" }
       - { order: 161, version: 2.55, file: "modules/shared/rameses-client-notification2.jar" }
       # etracs

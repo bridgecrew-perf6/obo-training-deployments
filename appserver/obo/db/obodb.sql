@@ -642,7 +642,7 @@ CREATE TABLE `building_permit_transmittal` (
   UNIQUE KEY `uix_building_permit_transmittal_taskid` (`taskid`) USING BTREE,
   KEY `fk_building_permit_transmittal_appid` (`appid`) USING BTREE,
   CONSTRAINT `fk_building_permit_transmittal_appid` FOREIGN KEY (`appid`) REFERENCES `building_permit` (`objid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1853,7 +1853,7 @@ CREATE TABLE `occupancy_permit_transmittal` (
   KEY `objid` (`objid`) USING BTREE,
   KEY `fk_occupancy_permit_transmittal_appid` (`appid`) USING BTREE,
   CONSTRAINT `fk_occupancy_application_transmittal_appid` FOREIGN KEY (`appid`) REFERENCES `occupancy_permit` (`objid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1875,7 +1875,7 @@ DROP TABLE IF EXISTS `occupancy_rpu`;
 CREATE TABLE `occupancy_rpu` (
   `objid` varchar(50) NOT NULL,
   `state` int(1) DEFAULT NULL,
-  `dtcreated` datetime(6) DEFAULT NULL,
+  `dtcreated` datetime DEFAULT NULL,
   `appid` varchar(50) DEFAULT NULL,
   `faasid` varchar(50) DEFAULT NULL,
   `tdno` varchar(50) DEFAULT NULL,
@@ -1903,12 +1903,12 @@ DROP TABLE IF EXISTS `sys_email_queue`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `sys_email_queue` (
-  `objid` varchar(50) CHARACTER SET latin1 NOT NULL,
+  `objid` varchar(50) NOT NULL,
   `refid` varchar(50) DEFAULT NULL,
   `state` int(1) DEFAULT NULL,
   `reportid` varchar(50) DEFAULT NULL,
   `dtsent` datetime DEFAULT NULL,
-  `to` varchar(255) CHARACTER SET latin1 DEFAULT NULL,
+  `to` varchar(255) DEFAULT NULL,
   `subject` varchar(255) DEFAULT NULL,
   `message` mediumtext,
   `errmsg` varchar(255) DEFAULT NULL,
