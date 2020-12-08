@@ -13,6 +13,8 @@ app:
       "#res.host" : "${app_server_ip}"
       "socketio.host" : "${app_server_ip}:7080"
 
+      "obo.app.host": "${app_server_ip}:8073"
+      "obo.app.context": "enterprise"
    modules:
       # core
       - { order: 100, version: 2.55, file: "modules/core/osiris2-client-themes.jar" }
