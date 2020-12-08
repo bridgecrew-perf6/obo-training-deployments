@@ -41,6 +41,7 @@ app:
       - { order: 158, version: 2.55, file: "modules/shared/rameses-enterprise-admin.jar" }
       - { order: 160, version: 2.55, file: "modules/shared/rameses-enterprise-financial.jar" }
       - { order: 161, version: 2.55, file: "modules/shared/rameses-client-notification2.jar" }
+      - { order: 162, version: 2.56, file: "modules/shared/rameses-jasper-client.jar" }      
       # etracs
       - { order: 200, version: 2.55, file: "modules/etracs/rameses-etracs-main.jar" }
       - { order: 202, version: 2.55, file: "modules/etracs/rameses-gov-etracs-ngas-report.jar" }
