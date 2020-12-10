@@ -1,0 +1,5 @@
+provider=script
+app.host=${app_server_ip}:8500
+app.cluster=cloud-server
+app.context=partner
+readTimeout=60000
