@@ -1,15 +1,12 @@
 import com.rameses.annotations.*;
 
-class OboIssuanceService {
+class OboControlService {
 	
 	@Service("DateService")
 	def dateSvc;
 
 	@DataContext("obo_doctype")
 	def doctypeEm;
-
-	@DataContext(dynamic=true)
-	def dynEm;
 
 	@Service("ControlnoGeneratorService")
 	def controlNoSvc;
@@ -18,16 +15,27 @@ class OboIssuanceService {
     def notificationSvc;
 
     @DataContext("obo_control")
-    def issEm;
+    def controlEm;
+
+	@DataContext(dynamic=true)
+	def dynEm;
 
 	@Env
 	def env;
 
 	@ProxyMethod
 	public def create( def p ) {
-		if( !p.appid ) throw new Exception("appid is required");
-		def doctype = doctypeEm.find( [objid: p.doctypeid ]).first();
+		if(!p.objid ) throw new Exception("objid is required");
+		if(!p._schemaname) throw new Exception("schemaname is required");
+		if(!p.doctypeid) throw new Exception("doctypeid is required");
+		if(!p.notificationid) throw new Exception("notificationid is required");
 
+		def appEm = dynEm.lookup( p._schemaname );
+		def app = appEm.find( [objid: p.objid] ).first();			
+		if(!app) throw new Exception("Document does not exist");
+		if(app.controlid) throw new Exception("This has already been issued");	
+
+		def doctype = doctypeEm.find( [objid: p.doctypeid ]).first();
 		if( doctype.issuetype == 2 ) {
 			if( !p.controlno ) throw new Exception("controlno is required");
 		}
@@ -40,30 +48,18 @@ class OboIssuanceService {
 			throw new Exception("issuetype is not supported " + doctype.issuetype + " .. ");
 		}
 
-		def  appEm, notificationid, infoid;
-		if( doctype.apptype == "building" && doctype.type.toLowerCase() == 'main' ) {
-			appEm = dynEm.lookup( "building_permit" );	
-			notificationid = "building_permit";		
+		//check first if this doctype has refdocs 
+		def refDocs = doctypeEm.find( [refdoc: doctype.objid ] ).list()*.objid;
+		if( refDocs ) {
+			//find all ref docs that have not yet been issued
+			def str = "('" + refDocs.join("','") + "')";
+			def unissued = appEm.find( [appid: app.appid ] ).where("controlid IS NULL AND doctypeid IN " + str ).list()*.doctype?.title;
+			if( unissued )
+				throw new Exception("Please issue the ff. reference documents first \n" + unissued.join("\n"));
 		}
-		else if(doctype.apptype == "building" && !doctype.type.toLowerCase() != 'main' )  {
-			appEm = dynEm.lookup( "building_permit_doc" );	
-			notificationid = "building_permit_doc:"+p.doctypeid.toLowerCase();		
-		}
-		else if( doctype.apptype == "occupancy" && doctype.type.toLowerCase() == 'main' ) {
-			appEm = dynEm.lookup( "occupancy_permit" );	
-			notificationid = "occupancy_permit";		
-		}
-		else if(doctype.apptype == "occupancy" && !doctype.type.toLowerCase() != 'main' )  {
-			appEm = dynEm.lookup( "occupancy_permit_doc" );	
-			notificationid = "occupancy_permit_doc:"+p.doctypeid.toLowerCase();		
-		}
-		def app = appEm.find( [objid: p.appid] ).first();			
-		if(!app) throw new Exception("Application does not exist");
-		if(app.controlid) throw new Exception("This has already been issued");			
 
 		def u = [:];
 		u.state = 1;
-		u.appid = p.appid;
 		u.issuedby = [ objid: env.USERID, name: env.FULLNAME ];
 		u.dtissued = dateSvc.getServerDate();
 		u.controlno = p.controlno;
@@ -73,12 +69,15 @@ class OboIssuanceService {
 		u.approverid = doctype.approverid;
 		u.endorserid = doctype.endorserid;
 		u.reportheader = doctype.reportheader;
-		u.infoid = app.infoid;
 
-		u = issEm.create( u );
-		appEm.find( [objid: p.appid] ).update( [controlid: u.objid ] );
+		u = controlEm.create( u );
 
-		notificationSvc.notify( [notificationid, "obo"] );
+		appEm.find( [objid: p.objid] ).update( [controlid: u.objid ] );
+
+		def notList = []
+		notList << p.notificationid;
+		notList << "obo";
+		notificationSvc.notify( notList );
 
 		return u;
 	}	

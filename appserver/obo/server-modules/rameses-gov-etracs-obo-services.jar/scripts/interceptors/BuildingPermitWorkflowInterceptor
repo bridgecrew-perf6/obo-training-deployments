@@ -149,29 +149,35 @@ class BuildingPermitWorkflowInterceptor {
 		}
 	}
 
+	//release process. Make sure there is at least one building_permit_issuance
+	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }", index=0 )
+	public void doActionBeforeRelease( def evt ) {
+		def p = evt.args[0];
+		def appid = p.refid;
+
+		def controlid = appEm.find( [objid: appid ]).select("controlid").val();
+		if( !controlid ) throw new Exception("Please issue the building permit first");
+
+		def docList = subdocEm.find( [appid: appid]).where(" controlid IS NULL AND doctype.issuetype = 2 ").select("doctype.title").list();
+		if( docList ) {
+			throw new Exception("The ff. documents are not yet issued: \n" + docList*.doctype.title.join("\n") );
+		}		
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }" ) 
+	public void doActionAfterRelease( def evt ) {
+		def p = evt.args[0];
+		p._notificationlist = [];
+		p._notificationlist << "building_permit";
+		emailSvc.send( [reportid:"building_permit", refid:p.refid ]);
+	}
+
 	//this should fire after all the tasks have been saved
 	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0]._notificationlist!=null }", index=50000) 
 	public void notifyOtherTasks( def evt ) {
 		def p = evt.args[0];
 		p._notificationlist << "obo";
 		notificationSvc.notify( p._notificationlist );
-	}
-
-	//release process. Make sure there is at least one building_permit_issuance
-	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }", index=0 )
-	public void doActionBeforeRelease( def evt ) {
-		def p = evt.args[0];
-		def appid = p.refid;
-		def docList = subdocEm.find( [appid: appid]).where("controlid IS NULL").select("doctype.title").list();
-		if( docList ) {
-			throw new Exception("The ff. documents are not yet issued: " + docList*.doctype.title.join("/n") );
-		}		
-	}
-
-	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }", index=0 ) 
-	public void doActionAfterRelease( def evt ) {
-		def p = evt.args[0];
-		throw new Exception("releasing the building permit");
 	}
 
 

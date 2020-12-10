@@ -23,7 +23,9 @@ services:
       - "8070:8070"
     volumes:
       - ../../_custom/datasources:/services/datasources
-
       - ../../_res/connections:/apps/etracs25/connections/ext
-
       - ../../_custom/module-server:/apps/etracs25/modules/ext/zzz-lgu-custom-module
+      - ./templates:/apps/server/templates      
+      #- ../../_custom/reports/etracs:/apps/server/templates/custom
+      - ../../_custom/output:/apps/server/output
+

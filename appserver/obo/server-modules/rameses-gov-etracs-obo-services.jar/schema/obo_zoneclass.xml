@@ -1,6 +1,6 @@
 <schema>
 	<element tablename="obo_zoneclass">
-		<field name="objid" primary="true" visible="true" searchable="true"/>
-		<field name="title" required="true" searchable="true"/>
+		<field name="objid" primary="true" visible="true" searchable="true" colwidth="100" caption="Obj ID"/>
+		<field name="title" required="true" searchable="true" caption="Title"/>
 	</element>
 </schema>	

@@ -69,7 +69,7 @@ class BuildingPermitFormReportInterceptor {
 		if(permit.approverid) {
 			permit.approver = sigEm.find( [objid: permit.approverid]).first();
 		}
-		permit.rpus = rpuEm.find([appid: permit.appid ]).select( "tdno,taxclearanceid,truecopycertid" ).list();
+		permit.rpus = rpuEm.find([appid: permit.objid ]).select( "tdno,taxclearanceid,truecopycertid" ).list();
 		result.data = permit;
 	}	
 
@@ -93,17 +93,22 @@ class BuildingPermitFormReportInterceptor {
         ];
 
         //load accompanying subdocuments
-        def subdocs = vwSubdocEm.find( [appid: permit.appid ] ).where( "doctype.issuetype = 2 ").list();
+        def subdocs = vwSubdocEm.find( [appid: permit.objid ] ).where( "doctype.issuetype = 2 ").list();
         subdocs.each {
         	o.attachments << [ reportid: "building_permit_doc", parameters: [objid: it.objid], title: it.doctypeid + ".pdf" ];
         }
 
         permit.rpus.each {
         	def res = jasperSvc.generateReport([reportid: "rpttaxclearance", refid: it.taxclearanceid] );
-        	o.attachments << [title: "TaxClearance_"+it.tdno+".pdf", filename:outputReportPath +res.tokenid + ".pdf" ];
-	        res = jasperSvc.generateReport([reportid: "tdtruecopy", refid: it.truecopycertid] );        	
-        	o.attachments << [title: "TrueCopyCert_"+it.tdno+".pdf", filename:outputReportPath+res.tokenid+".pdf" ];        	
+	        println "Res is " + res;
+        	if( res ) {
+	        	o.attachments << [title: "TaxClearance_"+it.tdno+".pdf", filename:outputReportPath +res.tokenid + ".pdf" ];
+		        res = jasperSvc.generateReport([reportid: "tdtruecopy", refid: it.truecopycertid] );        	
+	        	o.attachments << [title: "TrueCopyCert_"+it.tdno+".pdf", filename:outputReportPath+res.tokenid+".pdf" ];        	
+        	}
         } 
+
+        throw new Exception("stop here OK");
     }  
 
 
