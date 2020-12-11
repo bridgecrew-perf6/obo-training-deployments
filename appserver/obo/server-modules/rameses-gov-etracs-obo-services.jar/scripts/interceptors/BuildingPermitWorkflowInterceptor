@@ -53,6 +53,9 @@ class BuildingPermitWorkflowInterceptor {
 	@Service("BuildingEvaluationService")
 	def evalSvc;
 
+	@Service("OboControlService")
+	def controlSvc;
+
     // --- RECEIVING ---- //
 	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action=='send-for-requirement-verification' }") 
 	public void doActionBeforeReceiving( def evt ) {
@@ -167,6 +170,15 @@ class BuildingPermitWorkflowInterceptor {
 	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }" ) 
 	public void doActionAfterRelease( def evt ) {
 		def p = evt.args[0];
+		
+		//auto issue documents that are issuetype = 3;
+		def autoIssueDocs = vwSubdocEm.find( [appid: p.refid]).where("controlid IS NULL AND doctype.issuetype = 3").list();
+		if( autoIssueDocs ) {
+			autoIssueDocs.each {
+				controlSvc.create( [objid: it.objid, doctypeid: it.doctypeid, _schemaname: "building_permit_doc" ] );
+			}
+		}
+
 		p._notificationlist = [];
 		p._notificationlist << "building_permit";
 		emailSvc.send( [reportid:"building_permit", refid:p.refid ]);
@@ -179,6 +191,7 @@ class BuildingPermitWorkflowInterceptor {
 		p._notificationlist << "obo";
 		notificationSvc.notify( p._notificationlist );
 	}
+
 
 
 } 

@@ -2,7 +2,7 @@
 	<element tablename="obo_control">
 		<field name="objid" primary="true" prefix="OBOCTRL"/>
 		<field name="controlno"	/>
-		<field name="doctypeid"	/>
+		<field name="doctypeid"	required="true"/>
 		<field name="dtissued"	/>
 		<field name="issuedby_objid" />
 		<field name="issuedby_name" />

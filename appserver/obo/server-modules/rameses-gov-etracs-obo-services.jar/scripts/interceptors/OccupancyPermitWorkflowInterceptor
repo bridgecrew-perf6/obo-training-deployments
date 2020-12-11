@@ -22,6 +22,9 @@ class OccupancyPermitWorkflowInterceptor {
 	@DataContext("occupancy_permit_doc")
 	def subdocEm;
 
+	@DataContext("vw_occupancy_permit_doc")
+	def vwSubdocEm;
+
 	@DataContext("occupancy_rpu")
 	def rpuEm;
 
@@ -48,6 +51,9 @@ class OccupancyPermitWorkflowInterceptor {
 
 	@Service("OccupancyInspectionService")
 	def inspectionSvc;
+
+	@Service("OboControlService")
+	def controlSvc;
 
     // --- RECEIVING ---- //
 	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action=='send-for-requirement-verification' }") 
@@ -133,26 +139,18 @@ class OccupancyPermitWorkflowInterceptor {
 		emailSvc.send( [reportid:"occupancy_permit_assessment", refid:p.refid ]);			
 	}
 
+
 	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'post-payment' }" ) 
 	public void postPaymentTasks( def evt ) {
 		def p = evt.args[0];
 		def appid = p.refid;
 		def dt = dateSvc.getServerDate();
 
-		def docList = subdocEm.find( [appid: appid]).where("doctype.issuetype = 2 AND app.task.state = 'releasing' AND doctype.refdoc IS NULL").list()*.doctype?.objid;	
-		throw new Exception("post payment " + docList );
-
+		def docList = vwSubdocEm.find( [appid: appid]).where("doctype.issuetype = 2 AND app.task.state = 'releasing' AND controlid IS NULL AND doctype.refdoc IS NULL").list()*.doctype?.objid;	
 		p._notificationlist = [];
 		docList.each {
 			p._notificationlist <<  'occupancy_permit_doc:' + it.toLowerCase();				
 		}
-	}
-
-	//this should fire after all the tasks have been saved
-	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0]._notificationlist!=null }", index=50000) 
-	public void notifyOtherTasks( def evt ) {
-		def p = evt.args[0];
-		notificationSvc.notify( p._notificationlist );
 	}
 
 	//release process. Make sure there is at least one occupancy_permit_issuance
@@ -160,17 +158,39 @@ class OccupancyPermitWorkflowInterceptor {
 	public void doActionBeforeRelease( def evt ) {
 		def p = evt.args[0];
 		def appid = p.refid;
-		def docList = subdocEm.find( [appid: appid]).where("controlid IS NULL").select("doctype.title").list();
+
+		def controlid = appEm.find( [objid: appid ]).select("controlid").val();
+		if( !controlid ) throw new Exception("Please issue the building permit first");
+
+		def docList = subdocEm.find( [appid: appid]).where(" controlid IS NULL AND doctype.issuetype = 2 ").select("doctype.title").list();
 		if( docList ) {
-			throw new Exception("The ff. documents are not yet issued: " + docList*.doctype.title.join("/n") );
+			throw new Exception("The ff. documents are not yet issued: \n" + docList*.doctype.title.join("\n") );
 		}		
 	}
 
-	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }", index=0 ) 
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }" ) 
 	public void doActionAfterRelease( def evt ) {
 		def p = evt.args[0];
-		throw new Exception("releasing the building permit");
+		
+		//auto issue documents that are issuetype = 3;
+		def autoIssueDocs = vwSubdocEm.find( [appid: p.refid]).where("controlid IS NULL AND doctype.issuetype = 3").list();
+		if( autoIssueDocs ) {
+			autoIssueDocs.each {
+				controlSvc.create( [objid: it.objid, doctypeid: it.doctypeid, _schemaname: "occupancy_permit_doc" ] );
+			}
+		}
+
+		p._notificationlist = [];
+		p._notificationlist << "occupancy_permit";
+		//emailSvc.send( [reportid:"occupancy_permit", refid:p.refid ]);
 	}
 
+	//this should fire after all the tasks have been saved
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0]._notificationlist!=null }", index=50000) 
+	public void notifyOtherTasks( def evt ) {
+		def p = evt.args[0];
+		p._notificationlist << "obo";
+		notificationSvc.notify( p._notificationlist );
+	}
 
 }

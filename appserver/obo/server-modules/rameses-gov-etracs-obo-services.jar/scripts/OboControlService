@@ -28,7 +28,6 @@ class OboControlService {
 		if(!p.objid ) throw new Exception("objid is required");
 		if(!p._schemaname) throw new Exception("schemaname is required");
 		if(!p.doctypeid) throw new Exception("doctypeid is required");
-		if(!p.notificationid) throw new Exception("notificationid is required");
 
 		def appEm = dynEm.lookup( p._schemaname );
 		def app = appEm.find( [objid: p.objid] ).first();			
@@ -42,7 +41,13 @@ class OboControlService {
 		else if( doctype.issuetype == 1 || doctype.issuetype == 3 ) {
 			def pattern = doctype.controlnopattern;
 			if(!pattern) throw new Exception("Please define controlnopattern entry in doctype");
-			p.controlno = controlNoSvc.getNextNo( pattern );
+			try {
+				p.controlno = controlNoSvc.getNextNo( pattern );
+			}
+			catch(pex) {
+				throw new Exception("Error generating " + pex.getMessage() + " for pattern " + pattern );
+			}
+			
 		}
 		else {
 			throw new Exception("issuetype is not supported " + doctype.issuetype + " .. ");
@@ -62,6 +67,7 @@ class OboControlService {
 		u.state = 1;
 		u.issuedby = [ objid: env.USERID, name: env.FULLNAME ];
 		u.dtissued = dateSvc.getServerDate();
+		u.doctypeid = p.doctypeid;
 		u.controlno = p.controlno;
 		u.remarks = p.remarks;
 		u.expirydate = p.expirydate;
@@ -74,10 +80,12 @@ class OboControlService {
 
 		appEm.find( [objid: p.objid] ).update( [controlid: u.objid ] );
 
-		def notList = []
-		notList << p.notificationid;
-		notList << "obo";
-		notificationSvc.notify( notList );
+		if( p.notificationid) {
+			def notList = []
+			notList << p.notificationid;
+			notList << "obo";
+			notificationSvc.notify( notList );
+		}
 
 		return u;
 	}	
