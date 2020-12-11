@@ -99,16 +99,12 @@ class BuildingPermitDocFormReportInterceptor {
 			feeParentid = papp.objid;
 		}
 
-		//initially block this code.
-		def pay;
-		/*
-		def pay = payEm.find( [ parentid: feeParentid ] ).select("payment.refno,payment.refdate,amount").groupBy("payment.refno,payment.refdate").first();
+		def pay = payEm.find( [ parentid: feeParentid ] ).select("payment.refno,payment.refdate,amount:{SUM(amount)}").groupBy("payment.refno,payment.refdate").first();
 		if( pay?.payment ) {
 			docsub.receiptno = pay.payment.refno;
 			docsub.receiptdate = pay.payment.refdate;
 			docsub.amount = pay.amount;		
 		}
-		*/
 
 		//load evaluator. find the associated building evaluation
 		def zeval = vwEvalEm.find( [appid: docsub.appid, sectionid: docsub.sectionid ] ).first();
