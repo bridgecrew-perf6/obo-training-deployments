@@ -68,9 +68,9 @@ app:
       - { order: 251, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-ceo.jar" }
       - { order: 252, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-reports.jar" }
       # obo
-      - { order:304, version: 2.58, file: "modules/obo/rameses-gov-etracs-obo.jar" }
-      - { order:301, version: 2.58, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
-      - { order:302, version: 2.56, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }      
+      - { order:304, version: 2.59, file: "modules/obo/rameses-gov-etracs-obo.jar" }
+      - { order:301, version: 2.59, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
+      - { order:302, version: 2.59, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }      
       - { order:303, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-collection.jar" }
       - { order:305, version: 2.55, file: "modules/obo/rameses-gov-etracs-rptis-obo.jar" }
       - { order:306, version: 2.55, file: "modules/obo/reports/bfp-standard-forms.jar" }

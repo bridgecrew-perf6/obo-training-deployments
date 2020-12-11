@@ -28,4 +28,5 @@ services:
       - ./templates:/apps/server/templates      
       #- ../../_custom/reports/etracs:/apps/server/templates/custom
       - ../../_custom/output:/apps/server/output
+      - ./plugin-services/rpt-obo-services.jar:/apps/server/services/apps/etracs25/modules/rpt-obo-services.jar
 

@@ -1,0 +1,17 @@
+<schema>
+    <element tablename="occupancy_rpt_inspection">
+        <field name="objid" primary="true" prefix="ORI" />
+        <field name="state" required="true" caption="State" indexed="true" />
+        <field name="faasid" />
+        <field name="landfaasid" required="true" />
+        <field name="bldgpermitno" required="true" caption=" Building Permit #" searchable="true" indexed="true" />
+        <field name="inspectiondate" caption="Inspection Date" searchable="true" indexed="true" />
+        <field name="projecttitle" required="true" caption="Project Title" searchable="true" indexed="true" />
+        <field name="applicant_objid" />
+        <field name="applicant_name" required="true" caption="Applicant" searchable="true" indexed="true" />
+        <field name="applicant_address" required="true" caption="Address" />
+        <field name="projectcost" required="true" type="decimal" caption="Project Cost" />
+        <field name="appid" required="true" />
+        <complex name="rpus" serializer="default" />
+    </element>
+</schema>

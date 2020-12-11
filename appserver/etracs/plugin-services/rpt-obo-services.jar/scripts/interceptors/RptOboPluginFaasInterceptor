@@ -1,0 +1,18 @@
+import com.rameses.annotations.*;
+
+class RptOboPluginFaasInterceptor {
+	@Service(value="OccupancyRpuService", connection="obo")
+	def occupancySvc;
+
+	@Service(value="QueryService", connection="obo")
+	def querySvc;
+
+	@After(pattern="FAASService.approveFaas", index=1000)
+	def afterApproveFaas(evt) {
+		def faas = evt.faas;
+		def occupancy = querySvc.findFirst([_schemaname: "vw_occupancy_rpu", findBy: [faasid: faas.objid]]);
+		if (!occupancy) return;
+
+		occupancySvc.approve([objid: occupancy.objid, tdno: faas.tdno]);
+	}
+}

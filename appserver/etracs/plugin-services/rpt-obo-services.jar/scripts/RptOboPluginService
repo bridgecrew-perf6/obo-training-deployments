@@ -1,0 +1,93 @@
+import com.rameses.annotations.*;
+
+class RptOboPluginService {
+	@Service(value="OccupancyRpuService", connection="obo")
+	def occupancySvc;
+
+	@Service(value="QueryService", connection="obo")
+	def oboQuerySvc;
+
+	@Service('FAASService')
+	def faasSvc;
+
+	@DataContext("rysetting_land")
+	def em_setting_land;
+
+	@DataContext("realproperty")
+	def em_realproperty;
+
+	@DataContext("faas_list")
+	def em_faas;
+
+	@DataContext("bldgrpu")
+	def em_bldgrpu;
+
+
+	@ProxyMethod
+	public def getRpus(occupancy) {
+		return occupancySvc.getBldgRpus([appid: occupancy.bldgappid]);
+	}
+
+	@ProxyMethod
+	public def openFaas(faas) {
+		return faasSvc.openFaas(faas);
+	}
+
+	@ProxyMethod
+	public def createFaas(params) {
+		def occupancy = oboQuerySvc.findFirst([_schemaname: "vw_occupancy_rpu", findBy: [objid: params.objid]])
+		if (occupancy.faasid) throw new Exception("Occupany is invalid. Only pending state is allowed.");
+
+		occupancy.putAll(params);
+		def landfaas = em_faas.find([objid: occupancy.landfaas.refid]).first();
+		if (!landfaas) throw new Exception("Land FAAS does not exist or has already been deleted.");
+
+		def rp = em_realproperty.find([objid: landfaas.realpropertyid]).first();
+		def info =[:];
+		info.txntype = ["objid":"ND"];
+		info.datacapture = false;
+		info.ry = em_setting_land.select("ry").where('1=1').orderBy("ry desc").val();
+		info.rputype = "bldg";
+		info.suffix = occupancy.suffix;
+		info.pintype = rp.pintype;
+		info.isection = rp.section;
+		info.iparcel = rp.parcel;
+		info.section = rp.section;
+		info.parcel = rp.parcel;
+		info.pin = rp.pin;
+		info.fullpin = rp.pin + "-" + occupancy.suffix;
+		info.lgu = [objid: landfaas.lguid];
+		info.barangay = [objid: rp.barangayid];
+		info.rp = rp;
+		info.barangayid = rp.barangayid;
+		def faas = faasSvc.initNewDiscovery(info);
+		faas.taxpayer = occupancy.taxpayer;
+		faas.owner = occupancy.applicant;
+		faas.owner.address = occupancy.applicant.address.text;
+		faas.rpu.permitno = occupancy.bldgpermitno;
+		faas.rpu.permitdate = occupancy.bldgpermitdtissued
+		faas.rpu.occpermitno = occupancy.occpermitno;
+		faas.rpu.dtcertoccupancy = occupancy.occpermitdtissued;
+		faas.rpu.online = true;
+		faasSvc.updateFaas(faas);
+		occupancySvc.saveFaas([objid: occupancy.objid, faasid: faas.objid]);
+		return faas;
+	}
+
+	@ProxyMethod
+	public def updateOccupancy(occupancy) {
+		if (!occupancy.faasid) throw new Exception('faasid must be specified')
+		if (!occupancy.permitno) throw new Exception('permitno must be specified')
+		if (!occupancy.permitdtissued) throw new Exception('permitdtissued must be specified')
+
+		def rpuid = em_faas.select("rpuid").find([objid: occupancy.faasid]).val();
+		if (rpuid) {
+			em_bldgrpu.find([objid: rpuid]).update([
+				occpermitno: occupancy.permitno,
+				dtcertoccupancy: occupancy.permitdtissued,
+			]);
+		}
+
+	}
+
+}
