@@ -15,6 +15,9 @@ app:
 
       "obo.app.host": "${app_server_ip}:8073"
       "obo.app.context": "enterprise"
+
+      "rpt.app.host": "${app_server_ip}:8070"
+
    modules:
       # core
       - { order: 100, version: 2.55, file: "modules/core/osiris2-client-themes.jar" }
@@ -68,9 +71,9 @@ app:
       - { order: 251, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-ceo.jar" }
       - { order: 252, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-reports.jar" }
       # obo
-      - { order:304, version: 2.59, file: "modules/obo/rameses-gov-etracs-obo.jar" }
-      - { order:301, version: 2.59, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
-      - { order:302, version: 2.59, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }      
+      - { order:304, version: 2.60, file: "modules/obo/rameses-gov-etracs-obo.jar" }
+      - { order:301, version: 2.60, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
+      - { order:302, version: 2.60, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }      
       - { order:303, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-collection.jar" }
       - { order:305, version: 2.55, file: "modules/obo/rameses-gov-etracs-rptis-obo.jar" }
       - { order:306, version: 2.55, file: "modules/obo/reports/bfp-standard-forms.jar" }

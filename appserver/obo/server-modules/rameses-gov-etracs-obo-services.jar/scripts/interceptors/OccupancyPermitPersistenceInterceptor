@@ -187,6 +187,32 @@ class OccupancyPermitPersistenceInterceptor {
 		}
     }
 
+    private void saveBfpSalesTax( def app ) {
+    	if(!app.infos) return;
+    	//check the permit type if it exists
+    	def t = "BFP_SALES_TAX";
+    	def doc = subdocEm.find( [appid: app.objid, doctypeid: t]).first();
+    	if( !doc ) {
+    		doc = [:];
+			doc.appid = app.objid;
+			doc.doctype = [objid: t];
+			doc.amount = 0;
+			doc.state = 0;
+			doc = subdocEm.create( doc );		
+    	} 
+    	app.infos.each {
+    		if(!it.value) return;
+    		def info = [:];
+    		info.appid = app.objid;
+    		info.parentid = doc.objid;
+    		info.name = it.name;
+			info.type = [name: it.name ];
+			info.decimalvalue = it.value;
+			appInfoEm.create( info );
+    	}
+
+    }
+
  	@Before(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'occupancy_permit' }")
 	public void beforeCreateApplication(def evt) {
 		def app = evt.args[0];
@@ -251,6 +277,7 @@ class OccupancyPermitPersistenceInterceptor {
 		else {
 			saveEntities( app );
 			saveInitialDocuments( app );			
+			saveBfpSalesTax( app );
 			saveRequirements( app );
 			startWorkflow( app );
 		}
