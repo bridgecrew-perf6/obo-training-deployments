@@ -13,6 +13,7 @@
 		<field name="typeid" />
 		<field name="taskid" />
 		<field name="uploaded" />
+
 		<field name="type_title" />
 		<field name="type_sortindex" />
 

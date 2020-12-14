@@ -93,7 +93,7 @@ class BuildingPermitFormReportInterceptor {
         ];
 
         //load accompanying subdocuments
-        def subdocs = vwSubdocEm.find( [appid: permit.objid ] ).where( "doctype.issuetype = 2 ").list();
+        def subdocs = vwSubdocEm.find( [appid: permit.objid ] ).where( "doctype.issuetype IN (2,3) AND NOT(doctype.template IS NULL) ").list();
         subdocs.each {
         	o.attachments << [ reportid: "building_permit_doc", parameters: [objid: it.objid], title: it.doctypeid + ".pdf" ];
         }

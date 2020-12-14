@@ -22,6 +22,14 @@ class OccupancyPermitFormReportInterceptor {
 
 	String outputReportPath = "/apps/server/output/";
 
+	def findPermit( def id ) {
+		def permit = permitEm.find( [objid: id] ).first();	
+		if(!permit) {
+			throw new Exception("Permit not found");
+		}
+		return permit;
+	}
+
 	@After(pattern="FormReportService.getData", eval="#{ args[0].reportid == 'occupancy_permit' }")
 	public void getOccupancyPermitReport( def evt ) {
 		def p = evt.args[0];
@@ -29,7 +37,7 @@ class OccupancyPermitFormReportInterceptor {
 		def result = evt.result;
 		def id = p.parameters.objid;
 
-		def permit = permitEm.find( [objid: id] ).first();	
+		def permit = findPermit( id );	
 		def doctype = doctypeEm.find( [objid: 'OCCUPANCY_PERMIT'] ).first();
 
 		if(!permit.template) {
@@ -51,7 +59,6 @@ class OccupancyPermitFormReportInterceptor {
 		result.data = permit;
 	}	
 
-	/*
 	@Before(pattern="JasperEmailQueueService.send", eval="#{args[0].reportid == 'occupancy_permit' }")
 	public void beforeSendEmailQueue( def evt ) {
 		def p = evt.args[0];
@@ -67,23 +74,16 @@ class OccupancyPermitFormReportInterceptor {
         def refid = o.refid;
         def permit = formReportSvc.getData( [reportid:"occupancy_permit", parameters:[objid:refid] ] )?.data;
         o.attachments = [
-            [ reportid: o.reportid, data: permit, title: "BuildingPermit.pdf"],
+            [ reportid: o.reportid, data: permit, title: "OccupancyPermit.pdf"],
         ];
 
         //load accompanying subdocuments
-        def subdocs = vwSubdocEm.find( [appid: permit.appid ] ).where( "doctype.issuetype = 2 ").list();
+        def subdocs = vwSubdocEm.find( [appid: permit.objid ] ).where( "doctype.issuetype IN (2,3) AND NOT(doctype.template IS NULL) ").list();
         subdocs.each {
         	o.attachments << [ reportid: "occupancy_permit_doc", parameters: [objid: it.objid], title: it.doctypeid + ".pdf" ];
         }
 
-        permit.rpus.each {
-        	def res = jasperSvc.generateReport([reportid: "rpttaxclearance", refid: it.taxclearanceid] );
-        	o.attachments << [title: "TaxClearance_"+it.tdno+".pdf", filename:outputReportPath +res.tokenid + ".pdf" ];
-	        res = jasperSvc.generateReport([reportid: "tdtruecopy", refid: it.truecopycertid] );        	
-        	o.attachments << [title: "TrueCopyCert_"+it.tdno+".pdf", filename:outputReportPath+res.tokenid+".pdf" ];        	
-        } 
     }  
-    */
 
 
 }

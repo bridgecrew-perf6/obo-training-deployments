@@ -17,6 +17,7 @@
 		<field name="endorserid" />
 		<field name="approverid" />
 		<field name="refdoc"/>
+		<field name="role"/>
 	</element>
 </schema>	
 

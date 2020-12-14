@@ -17,6 +17,9 @@ class OccupancyInspectionPersistenceInterceptor {
 	@DataContext("occupancy_inspection_task")
 	def taskEm;
 
+	@Service("MenuNotificationService")
+	def notifySvc;
+
 	@Env
 	def env;
 
@@ -39,13 +42,23 @@ class OccupancyInspectionPersistenceInterceptor {
 		f.info = [ type: p.typeid, appid: p.appid ];
 		taskSvc.start(f);
 
+		def list = [];
+		list << "occupancy_inspection:" + p.typeid.toLowerCase();
+		list << "obo";
+		notifySvc.notify( list );
 	}
 
 	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname == 'occupancy_inspection' }" ) 
 	public void doActionBeforeRemoveEntity( def evt ) {
 		def p = evt.args[0];
+		def insp = inspEm.find( [objid: p.objid ] ).first();
 		inspEm.find( [objid: p.objid ] ).update( [ taskid: "{NULL}" ] );
 		taskEm.find( [refid: p.objid] ).delete();
+
+		def list = [];
+		list << "occupancy_inspection:" + insp.typeid.toLowerCase();
+		list << "obo";
+		notifySvc.notify( list );		
 	}
 	
 

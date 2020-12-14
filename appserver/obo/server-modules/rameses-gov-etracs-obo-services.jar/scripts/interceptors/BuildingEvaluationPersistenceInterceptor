@@ -17,6 +17,9 @@ class BuildingEvaluationPersistenceInterceptor {
 	@DataContext("building_evaluation_task")
 	def taskEm;
 
+	@Service("MenuNotificationService")
+	def notifySvc;
+
 	@Env
 	def env;
 
@@ -38,13 +41,24 @@ class BuildingEvaluationPersistenceInterceptor {
 		f.startdate = dateSvc.getServerDate();
 		f.info = [ type: p.typeid, appid: p.appid ];
 		taskSvc.start(f);
+
+		def list = [];
+		list << "building_evaluation:" + p.typeid.toLowerCase();
+		list << "obo";
+		notifySvc.notify( list );
 	}
 
 	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname == 'building_evaluation' }" ) 
 	public void doActionBeforeRemoveEntity( def evt ) {
 		def p = evt.args[0];
+		def e = evalEm.find( [objid: p.objid ] ).first();
 		evalEm.find( [objid: p.objid ] ).update( [ taskid: "{NULL}" ] );
 		taskEm.find( [refid: p.objid] ).delete();
+
+		def list = [];
+		list << "building_evaluation:" + e.typeid.toLowerCase();
+		list << "obo";
+		notifySvc.notify( list );
 	}
 	
 

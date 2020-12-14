@@ -182,7 +182,7 @@ class OccupancyPermitWorkflowInterceptor {
 
 		p._notificationlist = [];
 		p._notificationlist << "occupancy_permit";
-		//emailSvc.send( [reportid:"occupancy_permit", refid:p.refid ]);
+		emailSvc.send( [reportid:"occupancy_permit", refid:p.refid ]);
 	}
 
 	//this should fire after all the tasks have been saved
