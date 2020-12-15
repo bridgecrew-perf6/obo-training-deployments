@@ -99,11 +99,16 @@ class BuildingPermitFormReportInterceptor {
         }
 
         permit.rpus.each {
-        	def res = jasperSvc.generateReport([reportid: "rpttaxclearance", refid: it.taxclearanceid] );
-	        if( res ) {
-	        	o.attachments << [title: "TaxClearance_"+it.tdno+".pdf", filename:outputReportPath +res.tokenid + ".pdf" ];
-		        res = jasperSvc.generateReport([reportid: "tdtruecopy", refid: it.truecopycertid] );        	
-	        	o.attachments << [title: "TrueCopyCert_"+it.tdno+".pdf", filename:outputReportPath+res.tokenid+".pdf" ];        	
+        	try {
+	        	def res = jasperSvc.generateReport([reportid: "rpttaxclearance", refid: it.taxclearanceid] );
+		        if( res ) {
+		        	o.attachments << [title: "TaxClearance_"+it.tdno+".pdf", filename:outputReportPath +res.tokenid + ".pdf" ];
+			        res = jasperSvc.generateReport([reportid: "tdtruecopy", refid: it.truecopycertid] );        	
+		        	o.attachments << [title: "TrueCopyCert_"+it.tdno+".pdf", filename:outputReportPath+res.tokenid+".pdf" ];        	
+	        	}        	
+        	}
+        	catch( ignErr ) {
+        		println "error generating rpt reports for email. " + ignErr.getMessage();
         	}
         } 
 
