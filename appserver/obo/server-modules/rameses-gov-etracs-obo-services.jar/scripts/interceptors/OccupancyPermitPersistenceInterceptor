@@ -213,6 +213,15 @@ class OccupancyPermitPersistenceInterceptor {
 
     }
 
+    private void saveProfessionals( def app ) {
+    	println "save professionals";
+    	if(!app.professionals) return;
+    	println "start saving professionals";
+    	app.professionals.each {
+    		println it;
+    	}
+    }
+
  	@Before(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'occupancy_permit' }")
 	public void beforeCreateApplication(def evt) {
 		def app = evt.args[0];
@@ -276,6 +285,7 @@ class OccupancyPermitPersistenceInterceptor {
 		}
 		else {
 			saveEntities( app );
+			saveProfessionals( app );
 			saveInitialDocuments( app );			
 			saveBfpSalesTax( app );
 			saveRequirements( app );

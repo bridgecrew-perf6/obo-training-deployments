@@ -25,9 +25,6 @@ class OccupancyPermitWorkflowInterceptor {
 	@DataContext("vw_occupancy_permit_doc")
 	def vwSubdocEm;
 
-	@DataContext("occupancy_rpu")
-	def rpuEm;
-
 	@Service("WorkflowTaskService")
 	def wfSvc;
 
@@ -98,17 +95,6 @@ class OccupancyPermitWorkflowInterceptor {
 		def r = evt.result;
 		def tasks = inspectionSvc.startTasks( [appid: p.refid, state: r.state ] );
 		p._notificationlist = tasks.collect{ 'occupancy_inspection:' + it.toLowerCase() };
-
-		//fire also the assessor's inspection
-		def rpu = [:];
-		rpu.appid = p.refid;
-		rpu.state = 0;
-		rpu.dtcreated = dateSvc.getServerDate();
-		rpuEm.create( rpu );
-
-		//add to notification list;
-		p._notificationlist << "obo-rpt";
-		p._notificationlist << "occupancy_rpu";
 	}
 
 	//for-reactivation. check if there are evaluations where the task state is for-revision and reactivate each
@@ -166,20 +152,19 @@ class OccupancyPermitWorkflowInterceptor {
 		if( docList ) {
 			throw new Exception("The ff. documents are not yet issued: \n" + docList*.doctype.title.join("\n") );
 		}		
-	}
 
-	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }" ) 
-	public void doActionAfterRelease( def evt ) {
-		def p = evt.args[0];
-		
 		//auto issue documents that are issuetype = 3;
-		def autoIssueDocs = vwSubdocEm.find( [appid: p.refid]).where("controlid IS NULL AND doctype.issuetype = 3").list();
+		def autoIssueDocs = vwSubdocEm.find( [appid: appid]).where("controlid IS NULL AND doctype.issuetype = 3").list();
 		if( autoIssueDocs ) {
 			autoIssueDocs.each {
 				controlSvc.create( [objid: it.objid, doctypeid: it.doctypeid, _schemaname: "occupancy_permit_doc" ] );
 			}
 		}
+	}
 
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }" ) 
+	public void doActionAfterRelease( def evt ) {
+		def p = evt.args[0];
 		p._notificationlist = [];
 		p._notificationlist << "occupancy_permit";
 		emailSvc.send( [reportid:"occupancy_permit", refid:p.refid ]);

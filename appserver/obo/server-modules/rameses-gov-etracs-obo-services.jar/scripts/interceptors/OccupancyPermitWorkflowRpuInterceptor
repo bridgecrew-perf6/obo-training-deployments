@@ -1,0 +1,48 @@
+import com.rameses.annotations.*;
+import java.rmi.server.*;
+
+class OccupancyPermitWorkflowRpuInterceptor {
+
+	@DataContext("occupancy_rpu")
+	def rpuEm;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service(value="RptOboPluginService", connection="rpt")
+	def rptPluginSvc;
+
+	@DataContext("vw_occupancy_permit")
+	def permitEm;
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && result.state == 'inspection' && args[0].action != 'reactivate' }", index=100) 
+	public void fireSectionRpuOnInspection( def evt ) {
+		def p = evt.args[0];
+		//fire also the assessor's inspection
+		def rpu = [:];
+		rpu.appid = p.refid;
+		rpu.state = 0;
+		rpu.dtcreated = dateSvc.getServerDate();
+		rpuEm.create( rpu );
+
+		//add to notification list;
+		if(!p._notificationlist) p._notificationlist = [];
+		p._notificationlist << "obo-rpt";
+		p._notificationlist << "occupancy_rpu";
+	}
+
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }", index=100 ) 
+	public void doActionAfterRelease( def evt ) {
+		def p = evt.args[0];
+		def rpu = rpuEm.find( [appid: p.refid ] ).first();
+		if(rpu.faasid) {
+			def app = permitEm.find([objid: p.refid]).first();
+			def r = [:];
+			r.faasid = rpu.faasid;
+			r.permitno = app.controlno;
+			r.permitdtissued = app.dtissued;
+			rptPluginSvc.updateOccupancy( r );
+		}
+	}
+
+}
