@@ -64,6 +64,8 @@ class OccupancyPermitAssessmentInterceptor {
 		mapp.height = vapp.actualheight;
 		mapp.numunits = vapp.actualnumunits;
 		mapp.totalfloorarea = vapp.actualtotalfloorarea;
+		mapp.zoneclass = vapp.bldgpermit?.zoneclass;
+		mapp.zone = vapp.bldgpermit?.zone;
 
 		//throw new Exception("calculate occupancy fee assessment fired");
 		def infos = [];
