@@ -3,7 +3,7 @@ version: "3"
 services:
 
   local-obo-server:
-    image: "ramesesinc/enterprise-common-server:255.04.001-a1"
+    image: "ramesesinc/enterprise-common-server:255.04.001"
     container_name: local-obo-server
     restart: always
     logging: 
@@ -22,4 +22,3 @@ services:
       - ../../_custom/reports/obo:/apps/server/templates/custom
       - ../../_custom/output:/apps/server/output
       - ./server-modules:/enterprise/modules
-      - ./update-modules/rameses-rule-services.jar:/apps/server/services/modules/rameses-rule-services.jar

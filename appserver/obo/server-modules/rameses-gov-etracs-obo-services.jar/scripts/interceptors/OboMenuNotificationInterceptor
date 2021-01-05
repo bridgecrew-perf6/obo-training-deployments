@@ -26,7 +26,7 @@ class OboMenuNotificationInterceptor {
 	@DataContext("occupancy_rpu")
 	def occRpuEm;
 
-	@Service("OboUserRoleService")
+	@Service("UserRoleService")
 	def userRole;
 
 	@DataContext("sys_wf")

@@ -32,7 +32,7 @@ app:
       - { order: 109, version: 2.55, file: "modules/core/rameses-common2.jar"  }
       - { order: 110, version: 2.55, file: "modules/core/rameses-custom-impl.jar"  }
       - { order: 111, version: 2.55, file: "modules/core/rameses-jdbc16.jar"  }
-      - { order: 112, version: 2.56, file: "modules/core/rameses-seti.jar"  }
+      - { order: 112, version: 2.57, file: "modules/core/rameses-seti.jar"  }
       # shared
       - { order: 150, version: 2.55, file: "modules/shared/client-system.jar" }
       - { order: 151, version: 2.55, file: "modules/shared/client-ui-extended.jar" }
@@ -41,7 +41,8 @@ app:
       - { order: 154, version: 2.55, file: "modules/shared/rameses-rules-mgmt.jar" }
       - { order: 155, version: 2.55, file: "modules/shared/rameses-workflow-mgmt.jar" }
       - { order: 156, version: 2.56, file: "modules/shared/rameses-enterprise.jar" }
-      - { order: 158, version: 2.56, file: "modules/shared/rameses-enterprise-admin.jar" }
+      - { order: 158, version: 2.58, file: "modules/shared/rameses-enterprise-admin.jar" }
+      - { order: 159, version: 2.56, file: "modules/shared/rameses-enterprise-admin-plugin.jar" }
       - { order: 160, version: 2.55, file: "modules/shared/rameses-enterprise-financial.jar" }
       - { order: 161, version: 2.55, file: "modules/shared/rameses-client-notification2.jar" }
       - { order: 162, version: 2.56, file: "modules/shared/rameses-jasper-client.jar" }      
@@ -71,11 +72,12 @@ app:
       - { order: 251, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-ceo.jar" }
       - { order: 252, version: 2.55, file: "modules/bpls/rameses-gov-etracs-bpls-reports.jar" }
       # obo
-      - { order:304, version: 2.61, file: "modules/obo/rameses-gov-etracs-obo.jar" }
-      - { order:301, version: 2.61, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
-      - { order:302, version: 2.61, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }      
-      - { order:303, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-collection.jar" }
-      - { order:305, version: 2.56, file: "modules/obo/rameses-gov-etracs-rptis-obo.jar" }
+      - { order:304, version: 2.63, file: "modules/obo/rameses-gov-etracs-obo.jar" }
+      - { order:304, version: 2.63, file: "modules/obo/rameses-gov-etracs-obo-system.jar" }
+      - { order:301, version: 2.62, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
+      - { order:302, version: 2.62, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }      
+      - { order:303, version: 2.56, file: "modules/obo/rameses-gov-etracs-obo-collection.jar" }
+      - { order:305, version: 2.57, file: "modules/obo/rameses-gov-etracs-rptis-obo.jar" }
       - { order:306, version: 2.55, file: "modules/obo/reports/bfp-standard-forms.jar" }
       - { order:306, version: 2.56, file: "modules/obo/reports/obo-standard-forms.jar" }
       - { order:306, version: 2.55, file: "modules/obo/reports/zoning-standard-forms.jar" }

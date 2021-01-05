@@ -24,6 +24,7 @@ services:
     volumes:
       - ./templates:/apps/server/templates
       - ./plugin-services/rpt-obo-services.jar:/apps/etracs25/modules/rpt-obo-services.jar
+      - ./server-updates/rameses-enterprise-admin-services.jar:/apps/server/services/modules/admin/rameses-enterprise-admin-services.jar
 
       - ../../_custom/output:/apps/server/output
       - ../../_custom/datasources:/services/datasources
