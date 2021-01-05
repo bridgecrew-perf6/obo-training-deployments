@@ -1,0 +1,10 @@
+USE etracsdb;
+
+CREATE TABLE `sys_domain` (
+  `name` varchar(50) NOT NULL,
+  `connection` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+INSERT INTO `sys_domain` VALUES ('OBO', 'obo');

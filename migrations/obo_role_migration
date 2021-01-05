@@ -1,0 +1,69 @@
+USE targetdb;
+
+CREATE TABLE `sys_role` (
+  `name` varchar(50) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `sys_role_permission` (
+  `objid` varchar(100) NOT NULL,
+  `role` varchar(50) DEFAULT NULL,
+  `object` varchar(25) DEFAULT NULL,
+  `permission` varchar(25) DEFAULT NULL,
+  `title` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`objid`) USING BTREE,
+  KEY `fk_sys_role_permission_role` (`role`),
+  CONSTRAINT `fk_sys_role_permission_role` FOREIGN KEY (`role`) REFERENCES `sys_role` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `sys_user_role` (
+  `objid` varchar(50) NOT NULL,
+  `role` varchar(50) DEFAULT NULL,
+  `userid` varchar(50) NOT NULL,
+  `username` varchar(50) DEFAULT NULL,
+  `org_objid` varchar(50) DEFAULT NULL,
+  `org_name` varchar(50) DEFAULT NULL,
+  `securitygroup_objid` varchar(50) DEFAULT NULL,
+  `exclude` varchar(255) DEFAULT NULL,
+  `uid` varchar(150) DEFAULT NULL,
+  PRIMARY KEY (`objid`),
+  UNIQUE KEY `uix_sys_user_role_uid` (`uid`),
+  KEY `fk_sys_user_role_role` (`role`),
+  CONSTRAINT `fk_sys_user_role_role` FOREIGN KEY (`role`) REFERENCES `sys_role` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT IGNORE INTO 
+sys_role 
+(name, title) 
+SELECT role, title FROM sourcedb.sys_usergroup WHERE domain = 'OBO';
+
+INSERT IGNORE INTO 
+sys_role_permission 
+(objid,role,object,permission,title)
+SELECT sgp.objid,sg.role , sgp.object, sgp.permission, sgp.title  
+FROM sourcedb.sys_usergroup_permission sgp
+INNER JOIN sourcedb.sys_usergroup sg ON sgp.usergroup_objid=sg.objid 
+WHERE sg.domain = 'OBO';
+
+INSERT INTO sys_user_role 
+(objid,role,userid,org_objid,org_name) 
+SELECT 
+   sgm.objid,
+   sg.role AS role,
+   sgm.user_objid AS userid,
+   sgm.org_objid,
+   sgm.org_name 
+FROM sourcedb.sys_usergroup_member sgm
+INNER JOIN sourcedb.sys_usergroup sg ON sgm.usergroup_objid=sg.objid
+WHERE sg.domain = 'OBO';
+
+DELETE FROM sourcedb.sys_usergroup_permission 
+WHERE objid IN (SELECT objid FROM sys_role_permission);
+
+
+DELETE FROM sourcedb.sys_usergroup_member 
+WHERE objid IN (SELECT objid FROM sys_user_role); 
+
+DELETE FROM sourcedb.sys_usergroup WHERE domain='OBO'; 
+
