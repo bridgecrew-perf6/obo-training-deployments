@@ -30,3 +30,6 @@ services:
       - ../../_custom/datasources:/services/datasources
       - ../../_res/connections:/apps/etracs25/connections/ext
       - ../../_custom/module-server:/apps/etracs25/modules/ext/zzz-lgu-custom-module
+      - /Users/elmonazareno/RAMESES/modules/treasury/server/rameses-gov-treasury-services.jar:/apps/server/services/modules/treasury/rameses-gov-treasury-services.jar
+      - /Users/elmonazareno/RAMESES/modules/treasury/server/rameses-treasury-common-services.jar:/apps/server/services/modules/treasury/rameses-treasury-common-services.jar
+
