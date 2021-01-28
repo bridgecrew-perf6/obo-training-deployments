@@ -26,6 +26,7 @@ services:
       - ./plugin-services/rpt-obo-services.jar:/apps/etracs25/modules/rpt-obo-services.jar
       - ./server-updates/rameses-enterprise-admin-services.jar:/apps/server/services/modules/admin/rameses-enterprise-admin-services.jar
       - ./server-updates/rameses-gov-etracs-rptis-online-services.jar:/apps/server/services/modules/rptis/rameses-gov-etracs-rptis-online-services.jar
+      - ./server-updates/rameses-gov-etracs-rptis-city-services.jar:/apps/server/services/modules/rptis/rameses-gov-etracs-rptis-city-services.jar
       - ./server-updates/rameses-gov-treasury-services.jar:/apps/server/services/modules/treasury/rameses-gov-treasury-services.jar
       - ./server-updates/rameses-treasury-common-services.jar:/apps/server/services/modules/treasury/rameses-treasury-common-services.jar
 
