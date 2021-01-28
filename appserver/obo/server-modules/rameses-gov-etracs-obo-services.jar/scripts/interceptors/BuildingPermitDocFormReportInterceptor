@@ -42,6 +42,12 @@ class BuildingPermitDocFormReportInterceptor {
 		if( docsub.template == null ) {
 			docsub.template = docsub.doctype.template;
 		}
+		if( docsub.endorserid == null ) {
+			docsub.endorserid = docsub.doctype.endorserid;		
+		}
+		if( docsub.approverid == null ) {
+			docsub.approverid = docsub.doctype.approverid;		
+		}
 
 		def app = vwAppEm.find( [objid: docsub.appid ] ).first();
 
@@ -134,11 +140,11 @@ class BuildingPermitDocFormReportInterceptor {
 		}
 
 		//this is a temporary test
-		if( docsub.doctype.endorserid ) {
-			docsub.endorser = signatureEm.find( [objid: docsub.doctype.endorserid] ).first(); 
+		if( docsub.endorserid ) {
+			docsub.endorser = signatureEm.find( [objid: docsub.endorserid] ).first(); 
 		}
-		if( docsub.doctype.approverid ) {
-			docsub.approver = signatureEm.find( [objid: docsub.doctype.approverid] ).first(); 
+		if( docsub.approverid ) {
+			docsub.approver = signatureEm.find( [objid: docsub.approverid] ).first(); 
 		}
 		docsub.permittype = "BUILDING PERMIT";
 		//extra settings

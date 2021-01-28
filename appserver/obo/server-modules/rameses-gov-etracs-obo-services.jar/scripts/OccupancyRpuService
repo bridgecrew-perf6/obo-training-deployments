@@ -8,11 +8,17 @@ class OccupancyRpuService {
 	@DataContext("occupancy_rpu")
 	def rpuEm;
 
+	@DataContext("occupancy_permit")
+	def appEm;
+
 	@Service("DateService")
 	def dateSvc;
 
 	@Service("MenuNotificationService")
 	def menuSvc;
+
+	@Service(value="RPTCertificationOnlineService", connection="rpt")
+	def rptCertSvc;
 
     @Env
     def env;
@@ -41,6 +47,32 @@ class OccupancyRpuService {
 		list << "occupancy_rpu";
 		list << "obo-rpt";
 		menuSvc.notify( list );							
+	}
+
+	@ProxyMethod
+	public def generateDocs(def o) {
+		def rpu = rpuEm.find( [objid: o.objid] ).first();
+		def app = appEm.find( [objid: rpu.appid] ).first();
+		def params = [:];
+		params.faas = [objid: rpu.faasid ];
+		//params.requestedby = [name:"", address:""];
+		params.refid = app.objid;
+		params.refno = app.trackingno;	
+		params.refdate = app.appdate;
+		if( !params.refdate ) params.refdate = dateSvc.getServerDate();
+		params.reftype = "occupancy_permit";
+		params.purpose = "For Certificate of Occupancy"
+
+		def u = [:];
+		def cert = rptCertSvc.issueTrueCopy(params);
+		u.truecopycertid = cert.objid;				
+
+		//issue NOA
+    	def noa = rptCertSvc.issueNOA(params);
+    	u.noaid = noa.objid;
+
+		rpuEm.find( [objid: rpu.objid]).update( u );
+		return u;
 	}
 
 	

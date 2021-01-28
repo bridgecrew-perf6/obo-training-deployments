@@ -46,6 +46,7 @@
 		<field name="location_bldgname" />
 		
 		<field name="location_subdivision" />
+		<field name="location_lotarea" />
 
 		<field name="location_street" />
 		<field name="location_barangay_name" />

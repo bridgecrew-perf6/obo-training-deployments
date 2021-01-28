@@ -9,10 +9,10 @@
 			<key field="doctypeid" target="objid" />
 		</complex>  
 
-		<complex name="designprofessional" ref="obo_professional_info" jointype="many-to-one" required="false">
+		<complex name="designprofessional" ref="vw_obo_professional_info" jointype="many-to-one" required="false">
 			<key field="designprofessionalid" target="objid" />
 		</complex>  
-		<complex name="supervisor" ref="obo_professional_info" jointype="many-to-one"  required="false">
+		<complex name="supervisor" ref="vw_obo_professional_info" jointype="many-to-one"  required="false">
 			<key field="supervisorid" target="objid" />
 		</complex>  
 
@@ -30,15 +30,17 @@
 		<field name="issuedby_name" />
 		<field name="issuedby_objid" />
 		<field name="expirydate" />
+		
 		<field name="template" />
-		<field name="issue_remarks"/>
+		<field name="endorserid" />
+		<field name="approverid" />
 
 		<field name="appstate" />
 		<field name="appuserid" />
 		<field name="org_objid" />
 		<field name="sectionid" />
 
-		<complex name="app" ref="vw_building_permit" jointype="many-to-one" includefields="appno,trackingno,title,location.text,applicant.name,projectcost,fixedcost,task.state">
+		<complex name="app" ref="vw_building_permit" jointype="many-to-one" includefields="appno,trackingno,title,location.text,applicant.name,projectcost,fixedcost,task.state,occupancytype.*">
 			<key field="appid" target="objid" />			
 		</complex>	
 	</element>

@@ -2,7 +2,9 @@
 SELECT DISTINCT y.objid, y.title, y.sortindex
 FROM 
 (SELECT z.* FROM 
-(SELECT bet.objid, bet.sortindex, bet.title, swf.name, IFNULL( betr.role, swf.role) AS role, IFNULL(os.org_objid, 'root') AS orgid     
+(SELECT bet.objid, bet.sortindex, bet.title, swf.name, 
+	(CASE WHEN betr.role IS NULL THEN swf.role ELSE betr.role END) AS role, 
+	(CASE WHEN os.org_objid IS NULL THEN 'root' ELSE os.org_objid END) AS orgid     
 FROM building_evaluation_type bet
 LEFT JOIN obo_section os ON bet.sectionid = os.objid 
 INNER JOIN sys_wf_node swf ON swf.processname = 'building_evaluation' 	
@@ -17,8 +19,9 @@ ORDER BY y.sortindex
 [getAllTaskCount]
 SELECT COUNT(*) AS count   
 FROM  
-(SELECT bt.state, typ.objid AS section, IFNULL(os.org_objid, 'root') AS orgid, 
-IFNULL( betr.role, sn.role ) AS role
+(SELECT bt.state, typ.objid AS section, 
+	(CASE WHEN os.org_objid IS NULL THEN 'root' ELSE os.org_objid END) AS orgid, 
+	(CASE WHEN betr.role IS NULL THEN sn.role ELSE betr.role END) AS role
 FROM building_evaluation_task bt
 INNER JOIN building_evaluation be ON bt.taskid = be.taskid 
 INNER JOIN building_evaluation_type typ ON be.typeid = typ.objid
@@ -34,8 +37,9 @@ AND z.orgid = $P{orgid}
 [getNodeListTaskCountBySection]
 SELECT z.state, COUNT(*) AS count   
 FROM  
-(SELECT bt.state, typ.objid AS section, IFNULL(os.org_objid, 'root') AS orgid, 
-IFNULL( betr.role, sn.role ) AS role
+(SELECT bt.state, typ.objid AS section, 
+	(CASE WHEN os.org_objid IS NULL THEN  'root' ELSE os.org_objid END) AS orgid, 
+	(CASE WHEN betr.role IS NULL THEN  sn.role ELSE  betr.role END) AS role
 FROM building_evaluation_task bt
 INNER JOIN building_evaluation be ON bt.taskid = be.taskid 
 INNER JOIN building_evaluation_type typ ON be.typeid = typ.objid

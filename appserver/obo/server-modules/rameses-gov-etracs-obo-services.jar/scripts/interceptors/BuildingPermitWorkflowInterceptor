@@ -26,6 +26,9 @@ class BuildingPermitWorkflowInterceptor {
 	@DataContext("obo_control")
 	def issuanceEm;
 
+	@DataContext("obo_doctype")
+	def doctypeEm;
+
 	@DataContext("building_permit_doc")
 	def subdocEm;
 
@@ -145,8 +148,20 @@ class BuildingPermitWorkflowInterceptor {
 		def appid = p.refid;
 		def dt = dateSvc.getServerDate();
 
-		def docList = vwSubdocEm.find( [appid: appid]).where("doctype.issuetype = 2 AND app.task.state = 'releasing' AND controlid IS NULL AND doctype.refdoc IS NULL").list()*.doctype?.objid;	
+		//auto issue documents that are issuetype = 3;
+		def autoIssueDocs = vwSubdocEm.find( [appid: appid] ).where("controlid IS NULL AND doctype.issuetype = 3").list();
+		if( autoIssueDocs ) {
+			autoIssueDocs.each {
+				controlSvc.create( [objid: it.objid, doctypeid: it.doctypeid, _schemaname: "building_permit_doc" ] );
+			}
+		}
+		def bp = doctypeEm.find( [objid: "building_permit"] ).first();
+		if(bp.issuetype == 3 ) {
+			controlSvc.create( [objid: appid, doctypeid: "building_permit", _schemaname: "building_permit" ] );
+		}		
+
 		p._notificationlist = [];
+		def docList = vwSubdocEm.find([appid: appid]).where("doctype.issuetype = 2 AND controlid IS NULL").list()*.doctype?.objid;	
 		docList.each {
 			p._notificationlist <<  'building_permit_doc:' + it.toLowerCase();				
 		}
@@ -161,7 +176,7 @@ class BuildingPermitWorkflowInterceptor {
 		def controlid = appEm.find( [objid: appid ]).select("controlid").val();
 		if( !controlid ) throw new Exception("Please issue the building permit first");
 
-		def docList = subdocEm.find( [appid: appid]).where(" controlid IS NULL AND doctype.issuetype = 2 ").select("doctype.title").list();
+		def docList = subdocEm.find( [appid: appid]).where(" controlid IS NULL AND doctype.issuetype = 2 AND doctype.refdoc IS NULL").select("doctype.title").list();
 		if( docList ) {
 			throw new Exception("The ff. documents are not yet issued: \n" + docList*.doctype.title.join("\n") );
 		}		
@@ -170,7 +185,6 @@ class BuildingPermitWorkflowInterceptor {
 	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'release' }" ) 
 	public void doActionAfterRelease( def evt ) {
 		def p = evt.args[0];
-		
 		//auto issue documents that are issuetype = 3;
 		def autoIssueDocs = vwSubdocEm.find( [appid: p.refid]).where("controlid IS NULL AND doctype.issuetype = 3").list();
 		if( autoIssueDocs ) {

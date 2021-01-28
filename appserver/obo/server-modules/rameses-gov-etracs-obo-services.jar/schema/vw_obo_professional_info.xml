@@ -1,0 +1,42 @@
+<schema>
+	<element tablename="vw_obo_professional_info">
+		<field name="objid" primary="true" />
+		<field name="name" caption="Name"/>
+		<field name="firstname" caption="First Name" indexed="true"/>
+		<field name="middlename" caption="Middle Name"/>
+		<field name="lastname" caption="Last Name" indexed="true" searchable="true"/>
+		<field name="resident" />
+		<field name="address_objid" />
+		<field name="address_text" />
+		<field name="address_unitno" />
+		<field name="address_bldgno" />
+		<field name="address_bldgname" />
+		<field name="address_street" />
+		<field name="address_subdivision" />
+		<field name="address_barangay_objid" />
+		<field name="address_barangay_name" />
+		<field name="address_citymunicipality" />
+		<field name="address_province" />
+		<field name="tin" />
+		<field name="email" />
+		<field name="mobileno" />
+		<field name="phoneno" />
+		<field name="profession" caption="Profession"/>
+		<field name="id_idno" />
+		<field name="id_type_name" />
+		<field name="id_type_caption" />
+		<field name="id_type_title" />		
+		<field name="id_dtissued" />
+		<field name="id_placeissued" />
+		<field name="prc_idno" caption="PRC No" indexed="true" searchable="true"/>
+		<field name="prc_dtissued" />
+		<field name="prc_dtvalid" />
+		<field name="prc_placeissued" />
+		<field name="ptr_refno" />
+		<field name="ptr_dtissued" />
+		<field name="ptr_placeissued" />
+	</element>
+</schema>		
+
+
+

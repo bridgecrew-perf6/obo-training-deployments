@@ -30,7 +30,7 @@ AND bt.state = 'releasing'
 AND bs.controlid IS NULL
 AND od.refdoc IS NULL
 AND od.role IN ( ${roles} )  
-AND IFNULL(os.org_objid, 'root') = $P{orgid}
+AND (CASE WHEN os.org_objid IS NULL THEN 'root' ELSE os.org_objid END) = $P{orgid}
 
 
 [getSubdocsToEmail]

@@ -10,8 +10,9 @@ SELECT
    iss.expirydate,
    iss.issuedby_name,
    iss.issuedby_objid,
-   iss.remarks AS issue_remarks,
    iss.template,
+   iss.endorserid,
+   iss.approverid,
    od.sectionid
 FROM building_permit_doc a  
 INNER JOIN obo_doctype od ON a.doctypeid = od.objid 

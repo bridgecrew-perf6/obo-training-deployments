@@ -214,12 +214,14 @@ class OccupancyPermitPersistenceInterceptor {
     }
 
     private void saveProfessionals( def app ) {
+    	/*
     	println "save professionals";
     	if(!app.professionals) return;
     	println "start saving professionals";
     	app.professionals.each {
     		println it;
     	}
+    	*/
     }
 
  	@Before(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'occupancy_permit' }")
@@ -237,6 +239,13 @@ class OccupancyPermitPersistenceInterceptor {
 				app.trackingno = orgno + "-" + app.trackingno;
 			}
 		}	
+
+		/*
+		app.each { k,v->
+			println k+"="+v;
+		}
+		throw new Exception("save occupancy txntype " + app.bldgpermit?.txntype );
+		*/
 
 		//check first all professionals if exist in the obo_professional table
 		app.objid = "OAPP" + new UID();
@@ -323,5 +332,20 @@ class OccupancyPermitPersistenceInterceptor {
 		a.payment = paymentEm.find([appid: a.objid ]).where("voided=0").orderBy("refdate DESC, refno DESC").first();
 	}
 
+
+	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname == 'occupancy_permit' }")
+	public void beforeRemoveApp( def evt ) {
+		def p = evt.args[0];
+		def app = vwAppEm.find( [objid: p.objid]).first();
+		if( app.task.state != 'receiving') 
+			throw new Exception("Application can only be removed in receiving state");
+
+		appEm.find([objid: app.objid]).update( [applicantid: "{NULL}", taskid: "{NULL}" ] );
+		appInfoEm.find( [appid: app.objid ] ).delete();
+		entityEm.find( [appid: app.objid] ).delete();
+		subdocEm.find( [appid: app.objid] ).delete();	
+		appTaskEm.find( [refid: app.objid] ).delete();
+		reqEm.find( [appid: app.objid] ).delete();
+	} 
 
 }

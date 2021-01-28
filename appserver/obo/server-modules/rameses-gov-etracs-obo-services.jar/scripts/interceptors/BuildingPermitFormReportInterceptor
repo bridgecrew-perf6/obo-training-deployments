@@ -14,6 +14,9 @@ class BuildingPermitFormReportInterceptor {
 	@DataContext("obo_doctype")
 	def doctypeEm;
 
+	@DataContext("vw_building_permit_doc")
+	def vwDocEm;
+
 	@DataContext("sys_signature")
 	def sigEm;
 
@@ -46,17 +49,23 @@ class BuildingPermitFormReportInterceptor {
 		def id = p.parameters.objid;
 
 		def permit = findPermit( id );
+
+		def doctype = doctypeEm.find( [objid: 'BUILDING_PERMIT'] ).first();
 		if(!permit.template) {
-			def doctype = doctypeEm.find( [objid: 'BUILDING_PERMIT'] ).first();
 			permit.template = doctype.template;		
 		}
-		if(permit.appid) {
-			def pmt = pmtEm.find( [appid: permit.appid ]).where("voided = 0").first();
-			if( pmt ) {
-				permit.receiptno = pmt.refno;
-				permit.receiptdate = pmt.refdate;
-				permit.amount = pmt.amount;					
-			}
+		if(!permit.endorserid) {
+			permit.endorserid = doctype.endorserid;		
+		}
+		if(!permit.approverid) {
+			permit.approverid = doctype.approverid;		
+		}
+
+		def pmt = pmtEm.find( [appid: permit.objid ]).where("voided = 0").first();
+		if( pmt ) {
+			permit.receiptno = pmt.refno;
+			permit.receiptdate = pmt.refdate;
+			permit.amount = pmt.amount;					
 		}
 		
 		if(permit.worktypes) {
@@ -70,6 +79,13 @@ class BuildingPermitFormReportInterceptor {
 			permit.approver = sigEm.find( [objid: permit.approverid]).first();
 		}
 		permit.rpus = rpuEm.find([appid: permit.objid ]).select( "tdno,taxclearanceid,truecopycertid" ).list();
+
+
+		//we need to get the FSEC also. we'll just have to hardcode this
+		def fsec = vwDocEm.find( [appid: permit.objid, doctypeid: "FSEC"] ).first();
+		if( fsec?.objid ) {
+			permit.fsec = fsec;
+		}
 		result.data = permit;
 	}	
 

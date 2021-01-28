@@ -357,5 +357,20 @@ class BuildingPermitPersistenceInterceptor {
 		a.payment = paymentEm.find([appid: a.objid ]).where("voided=0").orderBy("refdate DESC, refno DESC").first();
 	}
 
+	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname == 'building_permit' }")
+	public void beforeRemoveApp( def evt ) {
+		def p = evt.args[0];
+		def app = vwAppEm.find( [objid: p.objid]).first();
+		if( app.task.state != 'receiving') 
+			throw new Exception("Application can only be removed in receiving state");
+		appEm.find([objid: app.objid]).update( [applicantid: "{NULL}", taskid: "{NULL}" ] );
+		rpuEm.find( [appid: app.objid] ).delete();
+		appInfoEm.find( [appid: app.objid] ).delete();
+		entityEm.find( [appid: app.objid] ).delete();
+		subdocEm.find( [appid: app.objid] ).delete();	
+		appTaskEm.find( [refid: app.objid] ).delete();
+		reqEm.find( [appid: app.objid] ).delete();
+	} 
+
 
 }

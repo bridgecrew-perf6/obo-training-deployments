@@ -8,6 +8,9 @@
 		<field name="txnmode"/>
 		<field name="faasid" />
 		<field name="tdno" />
+
+		<field name="truecopycertid" />
+		<field name="noaid" />
 	</element>
 </schema>
 		

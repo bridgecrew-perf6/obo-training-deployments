@@ -43,6 +43,7 @@
 		<field name="location_lotno" />
 		<field name="location_blockno" />
 		<field name="location_street" />
+		<field name="location_lotarea" />
 		<field name="location_barangay_name" />
 		<field name="location_text" />
 
@@ -65,12 +66,12 @@
 		<field name="task_tracktime" />
 		<field name="txnmode" />
 		
-		<complex name="supervisor" ref="obo_professional_info" jointype="many-to-one" required="false">
+		<complex name="supervisor" ref="vw_obo_professional_info" jointype="many-to-one" required="false">
 			<key field="supervisorid" target="objid" />
 		</complex> 
 
 		<field name="controlid" />
-		<field name="controlno" />
+		<field name="controlno" caption="Permit No" searchable="true" indexed="true"/>
 		<field name="dtissued" />
 		<field name="expirydate" />
 		<field name="issuedby_name" />

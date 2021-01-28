@@ -28,7 +28,7 @@ class BuildingPermitSignageReportInterceptor {
 
 		permit.name = permit.applicant?.lastname + ", " + permit.applicant?.firstname;
 
-		def subDocs = vwSubdocEm.find([appid: permit.appid ]).where("doctype.type='ANCILLARY' AND NOT(controlid IS NULL)").orderBy("doctype.sortorder ASC").list();
+		def subDocs = vwSubdocEm.find([appid: permit.objid ]).where("doctype.type='ANCILLARY' AND NOT(controlid IS NULL)").orderBy("doctype.sortorder ASC").list();
 
 		permit.profarchitect =	subDocs.find{ it.doctypeid.toLowerCase() == 'architectural' }?.designprofessional;	 
 		permit.profcivil = subDocs.find{ it.doctypeid.toLowerCase() == 'civil_structural' }?.designprofessional;
@@ -40,7 +40,9 @@ class BuildingPermitSignageReportInterceptor {
 		permit.profelectronic = subDocs.find{ it.doctypeid.toLowerCase() == 'electronic' }?.designprofessional;
 
 		permit.template = "reports/obo/building_permit_signage";
-		
+		permit.each {
+			println it;
+		}
 		result.data = permit;
 	}	
 

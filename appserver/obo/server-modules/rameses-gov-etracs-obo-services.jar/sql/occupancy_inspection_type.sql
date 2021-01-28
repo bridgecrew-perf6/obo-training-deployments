@@ -3,8 +3,8 @@ SELECT DISTINCT y.objid, y.title, y.sortindex
 FROM 
 (SELECT z.* FROM 
 (SELECT bet.objid, bet.sortindex, bet.title, swf.name, 
-	IFNULL( betr.role, swf.role) AS role, 
-	IFNULL(os.org_objid, 'root') AS orgid     
+	CASE WHEN betr.role IS NULL THEN swf.role ELSE betr.role END AS role, 
+	CASE WHEN os.org_objid IS NULL THEN 'root' ELSE os.org_objid  END AS orgid     
 FROM occupancy_inspection_type bet
 LEFT JOIN obo_section os ON bet.sectionid = os.objid
 INNER JOIN sys_wf_node swf ON swf.processname = 'occupancy_inspection' 	
@@ -20,8 +20,8 @@ ORDER BY y.sortindex
 SELECT COUNT(*) AS count   
 FROM  
 (SELECT bt.state, typ.objid AS section, 
-	IFNULL(os.org_objid, 'root') AS orgid, 
-IFNULL( oitr.role, sn.role )  AS role
+	CASE WHEN os.org_objid IS NULL THEN 'root' ELSE  os.org_objid END AS orgid, 
+	CASE WHEN oitr.role IS NULL THEN sn.role ELSE oitr.role END AS role
 FROM occupancy_inspection_task bt
 INNER JOIN occupancy_inspection be ON bt.taskid = be.taskid 
 INNER JOIN occupancy_inspection_type typ ON be.typeid = typ.objid
@@ -39,7 +39,7 @@ AND z.orgid = $P{orgid}
 SELECT z.state, COUNT(*) AS count   
 FROM  
 (SELECT bt.state, typ.objid AS section, 
-IFNULL( oitr.role, sn.role )  AS role
+	CASE WHEN oitr.role IS NULL THEN sn.role  ELSE oitr.role END AS role
 FROM occupancy_inspection_task bt
 INNER JOIN occupancy_inspection be ON bt.taskid = be.taskid 
 INNER JOIN occupancy_inspection_type typ ON be.typeid = typ.objid
