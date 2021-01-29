@@ -40,8 +40,9 @@ class OccupancyPermitAssessmentInterceptor {
 		def res = billingRuleSvc.execute( req );
 
 		def items = [];
-		res.billitems.findAll{ it.billcode && it.item == null && it.amount > 0 }.each {
+		res.billitems?.findAll{ it.billcode && it.item == null && it.amount > 0 }.each {
 			def p = itemAcctEm.find( [objid: it.billcode ] ).first();
+			if(!p) throw new Exception("Item code " + it.billcode + " not found in item account");
 			it.item = p;
 			if(o.parentid) it.parentid = o.parentid;
 			it.amtpaid = 0;

@@ -20,6 +20,12 @@ class OccupancyPermitFormReportInterceptor {
 	@DataContext("vw_occupancy_permit_doc")
 	def vwSubdocEm;
 
+	@DataContext("occupancy_rpu")
+	def rpuEm;
+
+	@Service(value="JasperReportService", connection="rpt")
+	def jasperSvc;
+
 	String outputReportPath = "/apps/server/output/";
 
 	def findPermit( def id ) {
@@ -82,6 +88,29 @@ class OccupancyPermitFormReportInterceptor {
         subdocs.each {
         	o.attachments << [ reportid: "occupancy_permit_doc", parameters: [objid: it.objid], title: it.doctypeid + ".pdf" ];
         }
+
+        //load rpt documents
+		def rpu = rpuEm.find( [appid: refid ]).first();
+		if( rpu ) {
+			try {
+				if( rpu.truecopycertid ) {
+					def res = jasperSvc.generateReport([reportid: "tdtruecopy", refid: rpu.truecopycertid ] );
+		        	if(res.tokenid) {
+		        		o.attachments << [title: "TaxClearance.pdf", filename:outputReportPath +res.tokenid + ".pdf" ];
+		        	}
+				}
+				if( rpu.noaid ) {
+			        def res = jasperSvc.generateReport([reportid: "rptnoa", refid: rpu.noaid ] );        	
+			        if( res.tokenid ) {
+		        		o.attachments << [title: "NoticeOfAssessment.pdf", filename:outputReportPath+res.tokenid+".pdf" ];        	
+			        }
+				}
+        	}
+        	catch( ignErr ) {
+        		println "error generating rpt reports for email. " + ignErr.getMessage();
+        	}		
+		}
+
 
     }  
 

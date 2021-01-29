@@ -28,7 +28,6 @@ services:
       - ./server-updates/rameses-gov-etracs-rptis-online-services.jar:/apps/server/services/modules/rptis/rameses-gov-etracs-rptis-online-services.jar
       - ./server-updates/rameses-gov-treasury-services.jar:/apps/server/services/modules/treasury/rameses-gov-treasury-services.jar
       - ./server-updates/rameses-treasury-common-services.jar:/apps/server/services/modules/treasury/rameses-treasury-common-services.jar
-
       - ../../_custom/output:/apps/server/output
       - ../../_custom/datasources:/services/datasources
       - ../../_res/connections:/apps/etracs25/connections/ext

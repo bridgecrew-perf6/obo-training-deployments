@@ -31,7 +31,7 @@ class OccupancyPermitWorkflowRpuInterceptor {
 		p._notificationlist << "occupancy_rpu";
 	}
 
-	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'release' }", index=100 ) 
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'occupancy_permit' && args[0].action == 'post-payment' }", index=100 ) 
 	public void doActionAfterRelease( def evt ) {
 		def p = evt.args[0];
 		def rpu = rpuEm.find( [appid: p.refid ] ).first();
