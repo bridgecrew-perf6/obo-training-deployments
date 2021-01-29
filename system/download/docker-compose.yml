@@ -49,6 +49,7 @@ services:
     volumes:
       - ./node/resources:/apps/server/public/resources
       - ../../_res/env.conf:/apps/server/public/resources/res.conf
-
       - ../../_custom/env.conf:/apps/server/public/resources/custom.conf
+      - ../../appserver/obo/module-client:/apps/server/public/resources/downloads/modules/obo
       - ../../_custom/module-client:/apps/server/public/resources/downloads/modules/custom
+
