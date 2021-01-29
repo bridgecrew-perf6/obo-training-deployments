@@ -42,12 +42,14 @@ class RptOboPluginService {
 		def landfaas = em_faas.find([objid: occupancy.landfaas.refid]).first();
 		if (!landfaas) throw new Exception("Land FAAS does not exist or has already been deleted.");
 
+		if (!params.rputype) params.rputype = 'bldg';
+		
 		def rp = em_realproperty.find([objid: landfaas.realpropertyid]).first();
 		def info =[:];
 		info.txntype = ["objid":"ND"];
 		info.datacapture = false;
 		info.ry = em_setting_land.select("ry").where('1=1').orderBy("ry desc").val();
-		info.rputype = "bldg";
+		info.rputype = params.rputype;
 		info.suffix = occupancy.suffix;
 		info.pintype = rp.pintype;
 		info.isection = rp.section;
@@ -70,8 +72,17 @@ class RptOboPluginService {
 		faas.rpu.dtcertoccupancy = occupancy.occpermitdtissued;
 		faas.rpu.online = true;
 		faasSvc.updateFaas(faas);
-		occupancySvc.saveFaas([objid: occupancy.objid, faasid: faas.objid]);
+
+		if ('bldg'.equalsIgnoreCase(params.rputype)) {
+			occupancySvc.saveFaas([objid: occupancy.objid, faasid: faas.objid]);
+		}
 		return faas;
+	}
+
+	@ProxyMethod
+	public def createMachineryFaas(params) {
+		params.rputype = 'mach';
+		return createFaas(params);
 	}
 
 	@ProxyMethod

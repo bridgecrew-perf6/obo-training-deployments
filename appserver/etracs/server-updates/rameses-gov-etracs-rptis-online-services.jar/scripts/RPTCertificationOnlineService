@@ -71,7 +71,7 @@ class RPTCertificationOnlineService {
 			return onlineCert
 		} else {
 			def cert = initTaxClearance(params)
-			def entity = entitySvc.open([objid: params.entityid])
+			def entity = entitySvc.open([objid: cert.entityid])
 			entity.address = entity.address.text
 			cert.taxpayer = entity
 			cert.requestedby = params.requestedby?.name ? params.requestedby.name :  entity.name
@@ -87,10 +87,57 @@ class RPTCertificationOnlineService {
 		if (onlineNoa) {
 			return onlineNoa
 		} else {
+			if (!params.faases) params.faases = [params.faas]
 			def noa = initNoa(params)
-			noaSvc.loadNotice(noa, params.faas);
+			noaSvc.create(noa)
 			return createOnlineNoa(noa, params)
 		}
+	}
+
+	def validDocTypes = ['tdtruecopy', 'rptnoa', 'rpttaxclearance'];
+
+	def generateTrueCopy = {params ->
+		def result = [];
+		params.faases.each{ faas -> 
+			params.faas = faas;
+			result << issueTrueCopy(params);
+		}
+		return result;
+	}
+
+	def generateNOA = {params ->
+		return issueNOA(params);
+	}
+
+	def generateTaxClearance = {params ->
+		return issueTaxClearance(params);
+	}
+
+	def doctypeHandlers = [
+		tdtruecopy: generateTrueCopy,
+		rptnoa: generateNOA,
+		rpttaxclearance: generateTaxClearance,
+	]
+
+	@ProxyMethod
+	public def generateDocs(params) {
+		if (!params.faases) throw new Exception("faases must be specified");
+		def doctypes = params.remove("doctypes");
+		if (!doctypes) doctypes = validDocTypes;
+
+		def faases = params.remove("faases");
+		def result = [:]
+		
+		doctypes.each{doctype ->
+			def p = [:];
+			p.putAll(params);
+			p.faases = faases;
+			def handler = doctypeHandlers[doctype];
+			if (!handler) throw new Exception('Handler not defined for doctype ' + doctype);
+			result[doctype] = handler(p);
+		}
+
+		return result;
 	}
 
 	@ProxyMethod
@@ -110,7 +157,6 @@ class RPTCertificationOnlineService {
 		return em_cert_online.read(cert)
 	}
 
-
 	def createOnlineCertification(cert, params) {
 		def onlineCert = [
 			objid : cert.objid,
@@ -124,7 +170,6 @@ class RPTCertificationOnlineService {
 		em_cert_online.create(onlineCert)
 		return onlineCert
 	}
-
 
 	def initTrueCopy(params) {
 		required('faas', params.faas);
@@ -233,22 +278,27 @@ class RPTCertificationOnlineService {
         	_online 		 : true,
         	reporttype		 : reporttype,
         	properties 		 : [reporttype: reporttype],
+			entityid 		 : params.faases[0].taxpayer.objid,
 		]
 	}
 
 	def initNoa(params) {
-		required('faas', params.faas);
-		required('faas.objid', params.faas.objid);
-		validateFaas(params.faas);
+		required('faases', params.faases)
+		params.faases.each{ faas ->
+			validateFaas(faas)
+		}
 
 		def noa = [objid: 'NOA' + new java.rmi.server.UID()]
-		noa.taxpayer = params.faas.taxpayer
+		noa.taxpayer = params.faases[0].taxpayer
 		noa._online = true
 		noa.items = []
-		noa.items << [
-			faasid: params.faas.objid,
-			faas: params.faas
-		]
+		params.faases.each{ faas ->
+			noa.items << [
+				faasid: faas.objid,
+				faas: faas,
+				effectivityyear: faas.effectivityyear,
+			]
+		}
 		return noa
 	}
 
@@ -283,6 +333,7 @@ class RPTCertificationOnlineService {
 		}
 		if (!faas) throw new Exception('FAAS ' + entity.tdno + ' does not exist or has been deleted.')
 		if (faas.state.matches('INTERIM|PENDING')) throw new Exception('FAAS ' + entity.tdno + ' is not yet approved.')
+		entity.putAll(faas)
 	}
 
 	def getOnlineCert(params, certtype) {
