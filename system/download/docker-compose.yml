@@ -32,7 +32,7 @@ services:
 
   download-node-server:
     container_name: download-node-server
-    image: ramesesinc/node-download-server:0.0.2
+    image: ramesesinc/node-download-server:0.0.3
     restart: always
     logging:
       driver: "json-file"
