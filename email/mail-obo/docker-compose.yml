@@ -17,4 +17,4 @@ services:
       - ./env.conf
       - ../../_custom/env.conf
     ports:
-      - "26:25"
+      - "2526:25"
