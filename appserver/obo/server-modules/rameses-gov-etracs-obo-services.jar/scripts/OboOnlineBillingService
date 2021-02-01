@@ -18,6 +18,8 @@ class OboOnlineBillingService  {
         def bill = billSvc.getBillItems( o );
         if(bill.amount==0)
             throw new Exception("There are no unpaid items for this application");
+
+        bill.txntypename = 'OBO'; 
         return bill;    
     }
 
