@@ -1,3 +1,4 @@
 provider=email
+mail.smtp.port=2525
 mail.smtp.host=${app_server_ip}
 mail.from=${MAIL_RELAY_USER}
