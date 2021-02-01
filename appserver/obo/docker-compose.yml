@@ -19,6 +19,6 @@ services:
       - ../../_res/connections:/apps/server/services/apps/enterprise/connections/ext
       - ../../_custom/datasources/obods:/apps/server/services/datasources/mainds
       - ./module-client/reports:/apps/server/templates      
-      - ../../_custom/reports/obo:/apps/server/templates/custom
+      - ../../_custom/module-client/obo:/apps/server/templates/custom
       - ../../_custom/output:/apps/server/output
       - ./server-modules:/enterprise/modules
