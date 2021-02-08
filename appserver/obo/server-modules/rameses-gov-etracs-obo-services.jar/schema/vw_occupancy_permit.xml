@@ -1,13 +1,13 @@
 <schema>
 	<element tablename="vw_occupancy_permit">
 		<field name="objid" primary="true"/>
-		<field name="appno" />
+		<field name="appno" searchable="true"/>
 		<field name="apptype" />
 		<field name="txntype" />
 		<field name="appdate" type="date"/>
 		
 		<field name="orgcode" />
-		<field name="trackingno" />
+		<field name="trackingno" searchable="true"/>
 		<field name="contact_name" />
 		<field name="contact_detail" />
 		<field name="contact_email" />

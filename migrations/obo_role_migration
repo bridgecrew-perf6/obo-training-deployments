@@ -33,6 +33,14 @@ CREATE TABLE `sys_user_role` (
   CONSTRAINT `fk_sys_user_role_role` FOREIGN KEY (`role`) REFERENCES `sys_role` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+INSERT INTO obo.dbo.sys_user
+SELECT DISTINCT 
+su.objid,su.username,su.firstname,su.lastname,su.middlename,su.name,su.jobtitle,su.txncode
+FROM etracs254_puerto.dbo.sys_user su
+INNER JOIN etracs254_puerto.dbo.sys_usergroup_member sgm
+INNER JOIN etracs254_puerto.dbo.sys_usergroup sg ON sgm.usergroup_objid=sg.objid
+WHERE sg.domain = 'OBO';
+
 INSERT IGNORE INTO 
 sys_role 
 (name, title) 
@@ -46,17 +54,34 @@ FROM sourcedb.sys_usergroup_permission sgp
 INNER JOIN sourcedb.sys_usergroup sg ON sgp.usergroup_objid=sg.objid 
 WHERE sg.domain = 'OBO';
 
-INSERT INTO sys_user_role 
-(objid,role,userid,org_objid,org_name) 
+INSERT INTO obo.dbo.sys_user_role 
+(objid,role,userid,org_objid,org_name, uid) 
 SELECT 
    sgm.objid,
    sg.role AS role,
    sgm.user_objid AS userid,
    sgm.org_objid,
-   sgm.org_name 
-FROM sourcedb.sys_usergroup_member sgm
-INNER JOIN sourcedb.sys_usergroup sg ON sgm.usergroup_objid=sg.objid
-WHERE sg.domain = 'OBO';
+   sgm.org_name,
+   CONCAT( sgm.user_objid, '_', sg.role) 
+FROM etracs254_puerto.dbo.sys_usergroup_member sgm
+INNER JOIN etracs254_puerto.dbo.sys_usergroup sg ON sgm.usergroup_objid=sg.objid
+WHERE sg.domain = 'OBO' AND sgm.org_objid IS NULL;
+
+INSERT INTO obo.dbo.sys_user_role 
+(objid,role,userid,org_objid,org_name, uid) 
+SELECT 
+   sgm.objid,
+   sg.role AS role,
+   sgm.user_objid AS userid,
+   sgm.org_objid,
+   sgm.org_name,
+   CONCAT( sgm.user_objid, '_', sg.role, '_', sgm.org_objid ) 
+FROM etracs254_puerto.dbo.sys_usergroup_member sgm
+INNER JOIN etracs254_puerto.dbo.sys_usergroup sg ON sgm.usergroup_objid=sg.objid
+WHERE sg.domain = 'OBO' AND NOT(sgm.org_objid IS NULL);
+
+
+
 
 DELETE FROM sourcedb.sys_usergroup_permission 
 WHERE objid IN (SELECT objid FROM sys_role_permission);
