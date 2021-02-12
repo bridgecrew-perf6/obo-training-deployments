@@ -17,7 +17,7 @@ class OboApplicationSubdocPersistenceInterceptor {
 	@Env
 	def env;
 
-	@After(pattern="PersistenceService.read", eval="#{args[0]._schemaname.matches('.*_application_subdoc') }")
+	@After(pattern="PersistenceService.read", eval="#{args[0]._schemaname.matches('.*_permit_doc') }")
 	public void onRead(def evt) {
 		def a = evt.result;
 		a.showchecklist = (chkListEm.find( [doctypeid: a.doctypeid]).select("c:{COUNT(*)}").val() > 0);
@@ -25,7 +25,7 @@ class OboApplicationSubdocPersistenceInterceptor {
 		a.showinfo = (varEm.find( [doctypeid: a.doctypeid]).select("c:{COUNT(*)}").val() > 0 );
 	}
 
-	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname.matches('.*_application_subdoc') }")
+	@Before(pattern="PersistenceService.removeEntity", eval="#{ args[0]._schemaname.matches('.*_permit_doc') }")
 	public void beforeRemoveApplicationSubdoc(def evt) {
 		def app = evt.args[0];
 

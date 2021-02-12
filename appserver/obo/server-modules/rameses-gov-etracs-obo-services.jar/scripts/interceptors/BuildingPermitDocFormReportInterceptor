@@ -38,7 +38,6 @@ class BuildingPermitDocFormReportInterceptor {
 		def id = p.parameters.objid;
 
 		def docsub = vwSubdocEm.find([objid: id ]).first();
-
 		if( docsub.template == null ) {
 			docsub.template = docsub.doctype.template;
 		}
@@ -152,13 +151,6 @@ class BuildingPermitDocFormReportInterceptor {
 		result.data = docsub;
 	}	
 
-	@Before(pattern="JasperEmailQueueService.send", eval="#{ args[0].reportid == 'building_permit_doc' }")
-	public void beforeQueueEmail( def evt ) {
-		def p = evt.args[0];
-		p.to = "elmonazareno@gmail.com";
-		p.subject = "Test Email " + p.refid;
-		p.message = "Test Email " + p.refid;		
-	}
 
     @Before(pattern="JasperReportEmailService.send", eval="#{ args[0].reportid == 'building_permit_doc' }", index=-10000)
     public void emailTest(def evt) {

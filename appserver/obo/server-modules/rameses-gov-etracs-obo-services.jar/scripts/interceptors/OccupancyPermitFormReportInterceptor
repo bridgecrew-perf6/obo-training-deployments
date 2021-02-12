@@ -69,7 +69,8 @@ class OccupancyPermitFormReportInterceptor {
 	public void beforeSendEmailQueue( def evt ) {
 		def p = evt.args[0];
 		def pmt = findPermit( p.refid );
-		p.to = pmt.contact.email;
+		if ( !p.to ) p.to = pmt.contact.email;
+		
 		p.info = pmt;
 		p.connection = "obo-email-server";
 	}

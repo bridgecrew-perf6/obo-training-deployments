@@ -48,7 +48,8 @@ class OboAssessmentReportInterceptor {
 			appEm = dynEm.lookup("vw_occupancy_permit");
 		}
 		def ea = appEm.find( [objid: p.refid ] ).first();
-		p.to = ea.contact.email;
+		if ( !p.to ) p.to = ea.contact.email;
+		
 		p.info = ea;
 	}
 

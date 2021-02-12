@@ -40,9 +40,6 @@ class BuildingPermitSignageReportInterceptor {
 		permit.profelectronic = subDocs.find{ it.doctypeid.toLowerCase() == 'electronic' }?.designprofessional;
 
 		permit.template = "reports/obo/building_permit_signage";
-		permit.each {
-			println it;
-		}
 		result.data = permit;
 	}	
 

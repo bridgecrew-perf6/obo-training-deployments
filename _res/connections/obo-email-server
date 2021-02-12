@@ -1,4 +1,4 @@
 provider=email
 mail.smtp.port=2526
 mail.smtp.host=${app_server_ip}
-mail.from=filipizenmailer@gmail.com
+mail.from=test.gdxapp.dev@gmail.com
