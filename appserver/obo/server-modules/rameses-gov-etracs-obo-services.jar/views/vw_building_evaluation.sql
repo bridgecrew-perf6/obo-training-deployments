@@ -6,21 +6,12 @@ SELECT
    os.org_objid AS org_objid,
    et.title AS type_title,
    et.sortindex AS type_sortindex,
+   et.joinstate AS type_joinstate,
    app.task_state AS app_task_state, 
    t.state AS task_state,
    t.dtcreated AS task_dtcreated,
-   (  SELECT bst.dtcreated  
-      FROM building_evaluation_task bst 
-      WHERE bst.refid = a.objid AND bst.state = 'start'
-      ORDER BY bst.dtcreated ASC 
-      LIMIT 1
-   ) AS task_startdate,
-   (  SELECT bst.dtcreated  
-      FROM building_evaluation_task bst 
-      WHERE bst.refid = a.objid AND bst.state = 'end'
-      ORDER BY bst.dtcreated DESC 
-      LIMIT 1
-   ) AS task_enddate,
+   t.startdate AS task_startdate,
+   t.enddate AS task_enddate,
    t.assignee_objid AS task_assignee_objid,
    t.assignee_name AS task_assignee_name,
    t.actor_objid AS task_actor_objid,

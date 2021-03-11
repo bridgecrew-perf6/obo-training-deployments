@@ -1,0 +1,184 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class BoracayTicketBillingService {
+	
+	@DataContext("boracay_terminal_ticket")
+	def ticketEm;
+
+	@DataContext("boracay_terminal_guest")
+	def guestEm;
+
+	@Service(value="EPaymentService", connection="local-epayment-server")
+	def epmtSvc;
+
+	@Service("ControlnoGeneratorService")
+	def controlNoSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("Var")
+	def sysvar;
+
+	@ProxyMethod
+	public def getBilling( def o ) {
+
+		if( !o.numguests ) throw new Exception("parameter numguests is required");
+		def g = o.numguests.toInteger();
+
+		//def billing = boracaySvc.getBilling( o );
+		def b = [:];
+		b.items = [];
+
+		o.routes.each {
+			def a = [:];
+			if( it.origin.toLowerCase() == "caticlan" ) {
+				a.item = [
+					objid : "ITMACCT-73bc3078:174aecbbb52:-7e2f",
+					title: "CATICLAN TERMINAL FEE",
+					fund: [objid: "GENERAL", code: "01", title: "GENERAL-PROPER" ]				
+				];
+			}
+			else if( it.origin.toLowerCase() == "cagban" ) {
+				a.item = [
+					objid : "ITMACCT-73bc3078:174aecbbb52:-7e2g",
+					title: "CAGBAN TERMINAL FEE",
+					fund: [objid: "GENERAL", code: "01", title: "GENERAL-PROPER" ]				
+				];
+			}
+			a.amount = g * 100;
+			b.items << a;
+		}
+
+		def z =[:];
+		z.item = [
+			objid : "ITMACCT-73bc3078:174aecbbb52:-7dd1",
+			title: "ENVIRONMENTAL FEE",
+			fund: [objid: "GENERAL", code: "01", title: "GENERAL-PROPER" ]
+		];
+		z.amount = g * 10 * o.routes.size();
+		b.items << z;
+
+		b.amount = b.items.sum{ it.amount };
+		return b;
+	}
+
+	private static String RANDOMKEY = "!edVk4uN|x+ntf/";
+
+	def formatData( def o ) {
+		def sb = new StringBuilder();
+		sb.append("ticketid:"+o.ticketid+";");
+		sb.append("traveldate:"+o.traveldate+";");		
+		sb.append("indexno:"+o.indexno+";");
+		sb.append("lastname:"+o.lastname+";");
+		sb.append("firstname:"+o.firstname+";");
+		sb.append("gender:"+o.gender+";");
+		sb.append("age:"+o.age+";");
+		sb.append("filipino:"+o.filipino+";");
+		if( !o.filipino  ) {
+			sb.append("country:"+o.country+";");
+			sb.append("passport:"+o.passport+";");
+		}
+		else {
+			sb.append("province:"+o.province+";");		
+		}
+		sb.append("origin:"+o.origin+";");
+		sb.append("destination:"+o.destination+";");
+		return sb.toString();
+	}
+
+	def generateGuestId( def o ) {
+		def str = formatData( o );
+		//println "------------------"
+		//println str;
+		return Encoder.SHA1.encode( str , RANDOMKEY );
+	}
+
+	@ProxyMethod
+	public def validateHash(  def g ) {
+		def o = guestEm.find( [objid: g.objid] ).first();
+		return (generateGuestId(o) == g.objid);
+	}
+
+	void createTicket( def o ) {
+		def pattern = sysvar.get( "boracay_ticketno_format" );
+		if(!pattern) throw new Exception("Please define boracay_ticketno_format entry in sys_var. Ex. BP-[yyyyMM]-[%05d]");
+
+		def routes = o.routes;
+		def guests = o.guests;
+
+		def df = new java.text.SimpleDateFormat("yyyy-MM-dd");
+
+		def t = [:];
+		t.objid = controlNoSvc.getNextNo( pattern );
+		t.contact = [ name:o.name, email:o.email, mobileno: o.mobileno ];
+		t.txndate = dateSvc.getServerDate();
+		t.routes = routes;
+		t.paymentrefid = o.paymentrefid;
+		t = ticketEm.create( t );
+
+		int idx = 0;
+		guests.each { ig->
+			idx++;
+			routes.each { rt->
+				def g = [:];
+				g.ticketid = t.objid;
+				g.traveldate = df.format( df.parse(rt.traveldate) );
+				g.indexno = idx;
+				g.lastname = ig.lastname;
+				g.firstname = ig.firstname;
+				g.gender = ig.gender?.objid;
+				g.age = ig.age;
+				g.country = ig.country;
+				g.province = ig.province;
+				g.filipino = (ig.isfilipino == true) ? 1 : 0;
+				g.passport = ig.passport;
+				g.origin = rt.origin.toUpperCase();
+				g.destination = rt.destination.toUpperCase();
+				g.objid = generateGuestId( g );
+				guestEm.create( g );
+			}		
+		}
+
+	}
+
+	@ProxyMethod
+	public def testPost(  def o ) {
+		def p = epmtSvc.getPaymentOrder( [objid: o.objid] );
+		def m = [:];
+		m.putAll( p.info.data );
+		m.name = p.paidby;
+		m.email = p.email;
+		m.mobileno = p.mobileno;
+		m.paymentrefid = p.objid;
+		createTicket( m );
+	}
+
+	@ProxyMethod
+	public def verifyPayment(  def o ) {
+		//do nothing.
+	}
+
+	@ProxyMethod
+	public def postPayment(  def o ) {
+		def m = [:];
+		def p = epmtSvc.getPaymentOrder( [objid: o.paymentrefid ] );
+		m.putAll( p.info.data );
+		m.name = p.paidby;
+		m.email = p.email;
+		m.mobileno = p.mobileno;
+		m.paymentrefid = p.objid;
+		createTicket( m );
+	}
+
+	@ProxyMethod
+	public def getGuestByPaymentRef( def o ) {
+		def t = ticketEm.find( [paymentrefid: o.paymentrefid ] ).first();
+		def p = [ticketid: t.objid];
+		if(o.indexno ) p.indexno = o.indexno;
+		def list = guestEm.find( p ).list();
+		return list;
+	}
+
+}

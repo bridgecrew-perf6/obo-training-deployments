@@ -11,6 +11,21 @@ class OboApplicationTransmittalInterceptor {
 	@DataContext("obo_doctype")
 	def doctypeEm;
 
+	def formatText( def txt, def vals ) {
+		if(vals==null) vals = [];
+        def s = txt =~ /\{\w\}/ ;
+        def sb = new StringBuffer();
+        int i = 0;
+        while (s.find()) {
+           if(vals.size()-1 <= i) vals << "";
+           def val = vals[i++];
+           if( !val ) val = "?";
+           s.appendReplacement(sb,"<u>"+val+"</u>"); 
+        } 
+        s.appendTail(sb);
+        return sb.toString();
+	}
+
 	@After(pattern="FormReportService.getData", eval="#{ args[0].reportid.matches('.*_transmittal') }", index=0 )
 	public void getTransmittalReport( def evt ) {
 		def p = evt.args[0];
@@ -44,8 +59,15 @@ class OboApplicationTransmittalInterceptor {
 				doctype = doctypeEm.find( [objid: "OCCUPANCY_INSPECTION_TRANSMITTAL"] ).first();
 			}
 			def itemDb =  db.lookup( itemName );
-			items = itemDb.find( [transmittalid : t.objid ] ).orderBy("type.sortorder").list();
+			items = itemDb.find( [transmittalid : t.objid ] ).orderBy("parent.type.sortindex ASC, checklistitem.indexno ASC").list();
 			items.each {
+				if(it.checklistitem?.title ) {
+					def part = it.particulars;
+					it.particulars = formatText( it.checklistitem.title, it.values );
+					if(	!it.particulars.endsWith(".")) it.particulars += ". ";
+					if(part) it.particulars += part;
+				}
+
 				if(it.attachment ) {
 					it.attachment = "image:" + it.attachment;
 				};

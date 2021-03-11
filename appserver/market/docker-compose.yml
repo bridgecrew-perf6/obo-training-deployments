@@ -3,7 +3,7 @@ version: "3"
 services:
 
   local-obo-server:
-    image: "ramesesinc/enterprise-common-server:255.04.002"
+    image: "ramesesinc/enterprise-common-server:255.04.001"
     container_name: local-obo-server
     restart: always
     logging: 

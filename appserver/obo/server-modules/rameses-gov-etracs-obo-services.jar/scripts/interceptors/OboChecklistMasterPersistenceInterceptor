@@ -1,0 +1,16 @@
+import com.rameses.annotations.*;
+
+class OboChecklistMasterPersistenceInterceptor {
+	
+	@DataContext("obo_checklist_master")
+	def chklistEm;
+
+	@Before(pattern="PersistenceService.removeEntity", eval="#{args[0]._schemaname == 'obo_checklist_master' }") 
+	public void beforeRemoveCheckList( def evt ) {
+		def o = evt.args[0];
+		def isSys = chklistEm.find([objid: o.objid]).select("system").val();
+		if(isSys == 1) 
+			throw new Exception("Cannot remove checklist because this is system defined");
+	} 
+
+}

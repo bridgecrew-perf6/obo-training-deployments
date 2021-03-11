@@ -1,0 +1,16 @@
+<schema>
+	<element tablename="building_permit_post_requirement">
+		<field name="objid" primary="true" prefix="BLDPMTPREQ"/>
+		<field name="appid" />
+		<field name="parentid" />
+		<field name="state" />
+		<field name="remarks" />
+		<field name="createdby_objid" />
+		<field name="createdby_name" />
+		<field name="dtcreated" />
+		<complex name="type" ref="obo_requirement_type" jointype="many-to-one" includefields="objid,title,sortorder" required="true">
+			<key field="typeid" target="objid"/>
+		</complex>
+	</element>
+</schema>
+

@@ -1,0 +1,38 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import treasury.utils.*;
+import boracay.facts.*;
+
+class BoracayTerminalTicketCashReceiptService {
+	
+	@Service("BillingRuleService")
+	def billRuleSvc;
+
+	@DataContext("boracay_itemaccount")
+	def itemAcctEm;
+	
+	@ProxyMethod
+	public def getBilling( def o ) {
+		if( o.params.numadults + o.params.numchildren + o.params.numsenior <= 0 )
+			throw new Exception("There must be at least 1 guest");
+
+		def r = [rulename: "boracaybilling", params: [txnid:o.txnid], include_items: true ];
+		r.factBuilder = new FactBuilder();
+		r.factBuilder.facts << new TerminalTicket( o.params );
+		def info =  billRuleSvc.execute(r);
+
+		if(info.items ) {
+			info.items.each {
+				it.item = itemAcctEm.find( [objid: it.billcode] ).first()?.item;			
+			}
+		};
+
+		info.numadults = (o.params.numadults? o.params.numadults : 0 );
+		info.numchildren = (o.params.numchildren?o.params.numchildren:0);
+		info.numsenior = (o.params.numsenior?o.params.numsenior:0 );		
+		return info;
+	}
+
+
+
+}

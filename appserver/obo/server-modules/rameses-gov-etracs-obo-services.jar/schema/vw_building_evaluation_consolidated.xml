@@ -1,0 +1,15 @@
+<schema>
+	<element tablename="vw_building_evaluation_consolidated">
+		<field name="objid" primary="true" />
+		<field name="appid" />
+		<field name="typeid" />
+		<field name="type_title" />
+		<field name="sortindex" />
+		<field name="state" />
+		<field name="assignee_objid" />
+		<field name="org_objid" />
+		<field name="role" />
+	</element>
+</schema>
+
+

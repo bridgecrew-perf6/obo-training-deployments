@@ -1,0 +1,17 @@
+app:
+   env:
+      "obo.app.host": "${app_server_ip}:8073"
+      "obo.app.context": "enterprise"
+
+   modules:
+      # obo
+      - { order: 304, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo.jar" }
+      - { order: 304, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-shared.jar" }
+      - { order: 301, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-building.jar" }
+      - { order: 302, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-occupancy.jar" }      
+      - { order: 303, version: 2.55, file: "modules/obo/rameses-gov-etracs-obo-collection.jar" }
+      - { order: 305, version: 2.55, file: "modules/obo/rameses-gov-etracs-rptis-obo.jar" }
+      - { order: 306, version: 2.55, file: "modules/obo/reports/bfp-standard-forms.jar" }
+      - { order: 306, version: 2.55, file: "modules/obo/reports/obo-standard-forms.jar" }
+      - { order: 306, version: 2.55, file: "modules/obo/reports/zoning-standard-forms.jar" }
+

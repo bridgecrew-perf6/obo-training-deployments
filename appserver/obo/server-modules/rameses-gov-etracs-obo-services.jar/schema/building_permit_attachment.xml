@@ -1,0 +1,9 @@
+<schema>
+	<element tablename="building_permit_attachment">
+		<field name="objid" primary="true" prefix="BPATTACH"/>
+		<field name="appid" />
+		<field name="parentid" />
+		<field name="fileid" />
+		<field name="title" />
+	</element>
+</schema>

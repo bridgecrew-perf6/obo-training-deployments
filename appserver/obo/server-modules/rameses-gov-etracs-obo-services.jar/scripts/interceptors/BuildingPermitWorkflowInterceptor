@@ -121,6 +121,14 @@ class BuildingPermitWorkflowInterceptor {
 		p._notificationlist = tasks.collect{ 'building_evaluation:' + it.toLowerCase() };
 	}
 	
+	//Check if there are unfinished tasks. Called when calling submit for trade evaluation
+	@After(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].taskstate?.matches('.*evaluation.*')  }" ) 
+	public void checkUnfinishedEvaluationTasks( def evt ) {
+		def p = evt.args[0];
+		evalSvc.checkUnfinishedTasks( [appid: p.refid, state: p.taskstate] );
+	}
+
+
 	//check at least one fee
 	@Before(pattern="WorkflowTaskService.signal", eval="#{args[0].processname == 'building_permit' && args[0].action == 'send-for-assessment-approval' }") 
 	public void doActionBeforeSendAssessmentForApproval( def evt ) {

@@ -1,0 +1,11 @@
+<schema>
+	<element tablename="boracay_terminal_ticket">
+		<field name="objid" primary="true"/>
+		<field name="contact_name" />
+		<field name="contact_email" />
+		<field name="contact_mobileno" />
+		<field name="txndate" />
+		<complex name="routes" serializer="default"/>
+		<field name="paymentrefid" />
+	</element>
+</schema>	

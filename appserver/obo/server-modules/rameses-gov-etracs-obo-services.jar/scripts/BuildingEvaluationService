@@ -17,6 +17,9 @@ class BuildingEvaluationService {
 	@DataContext("vw_building_evaluation")
 	def vwEvalEm;
 
+	@DataContext("building_evaluation_finding")
+	def findingEm;
+
 	@Env
 	def env;
 
@@ -100,6 +103,52 @@ class BuildingEvaluationService {
 		return list;
 	}
 
+
+	//this is called by the evaluation tasks when firing approve or send for revision
+	@ProxyMethod
+	public void joinMainProcess( def o  ) {
+		if(!o.refid) throw new Exception("refid is required in BuildingPermitWorkflowService.checkHasUncompletedSubTasks");	
+		
+		def r = vwEvalEm.find( [objid: o.refid ]).first();
+
+		//check if there are findings that have transmittalid but are still open. It must be closed or supersederid
+		def tlist = findingEm.find([appid: r.appid]).where(" state=2 AND supersederid IS NULL AND NOT(transmittalid IS NULL) " ).list();
+		if(tlist) 
+			throw new Exception("There are still pending findings that need to be superseded or closed");
+
+		//check if the evaluation's join state matches the application's state. if it does not match, no need to signal main process
+		def app = vwAppEm.find( [objid: r.appid] ).first();
+		if( app.task.state != r.type.joinstate ) return;
+
+		//list for all related tasks having the same join state. if there are no open states then signal main process
+		def refList = vwEvalEm.find( [appid: app.objid] ).where( "type.joinstate = :js", [js: r.type.joinstate ] ).select("task.state").list();
+		def hasOpen = refList.find{ !it.task.state.matches( "for-revision|end" ) };
+		if( hasOpen ) {
+			return;
+		}
+
+		//determine what action to fire in.  Check worfklow if for-revision it will go thru for revision.
+		boolean hasRevision = (refList.find{ it.task.state == "for-revision" }!=null) ? true : false;
+
+		def f = [:];
+		f.processname = 'building_permit';
+		f.refid = app.objid;
+		f.startdate = dateSvc.getServerDate();
+		f.info = [ hasrevision: hasRevision ];
+		wfSvc.signal(f);		
+	}
+
+	@ProxyMethod
+	public void checkUnfinishedTasks( def o ) {
+		if(!o.appid) throw new Exception("appid is required in BuildingEvaluationService.checkUnfinishedTasks");
+		if(!o.state) throw new Exception("state is required in BuildingEvaluationService.checkUnfinishedTasks");
+		def rList = vwEvalEm.find( [appid:o.appid] ).where( "type.joinstate = :js AND task.state NOT IN ('end', 'for-revision') ", [js: o.state ] ).list();
+		if(rList) {
+			def docs = rList*.type.title.join("\n");
+			throw new Exception("The following evaluations are not yet completed. Please complete before proceeding: \n" + docs);
+
+		}
+	}
 
 
 	

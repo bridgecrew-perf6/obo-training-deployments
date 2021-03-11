@@ -4,6 +4,7 @@
 		<field name="title" />
 		<field name="sortindex" />
 		<field name="activationstate" />
+		<field name="joinstate" />
 		<field name="required" />
 
 		<complex name="customroles" ref="building_evaluation_type_role" jointype="one-to-many" required="false">

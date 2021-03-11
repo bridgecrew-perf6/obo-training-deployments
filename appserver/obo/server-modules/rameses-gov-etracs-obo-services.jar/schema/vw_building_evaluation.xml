@@ -13,6 +13,7 @@
 
 		<field name="type_title" />
 		<field name="type_sortindex" />
+		<field name="type_joinstate" />
 
 		<field name="task_state" />
 		<field name="task_dtcreated" />

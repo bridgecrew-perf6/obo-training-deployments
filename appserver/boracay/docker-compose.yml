@@ -2,9 +2,9 @@ version: "3"
 
 services:
 
-  local-obo-server:
-    image: "ramesesinc/enterprise-common-server:255.04.002"
-    container_name: local-obo-server
+  boracay-server:
+    image: "ramesesinc/enterprise-common-server:255.04.001"
+    container_name: boracay-server
     restart: always
     logging: 
       driver: "json-file"
@@ -14,11 +14,11 @@ services:
     env_file:
       - ../../_custom/env.conf
     ports:
-      - "8073:8070"
+      - "8096:8070"
     volumes:
       - ../../_res/connections:/apps/server/services/apps/enterprise/connections/ext
-      - ../../_custom/datasources/obods:/apps/server/services/datasources/mainds
-      - ./module-client/reports:/apps/server/templates      
+      - ../../_custom/datasources/boracayds:/apps/server/services/datasources/mainds
       - ../../_custom/module-client/obo:/apps/server/templates/custom
       - ../../_custom/output:/apps/server/output
+      - ./module-client/reports:/apps/server/templates 
       - ./server-modules:/enterprise/modules

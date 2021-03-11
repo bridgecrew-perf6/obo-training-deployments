@@ -1,0 +1,14 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class BoracayTerminalTicketPaymentService {
+	
+
+	@ProxyMethod
+	public def postPayment( def o ) {
+		throw new Exception("firing post payment " + o.numadults + " " + o.numchildren + " " + o.numsenior );
+	}
+
+	
+
+}

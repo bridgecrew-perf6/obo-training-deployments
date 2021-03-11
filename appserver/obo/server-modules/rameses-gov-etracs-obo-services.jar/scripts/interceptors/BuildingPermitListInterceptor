@@ -1,0 +1,40 @@
+import com.rameses.annotations.*; 
+
+class BuildingPermitListInterceptor { 
+
+
+	@After(pattern="QueryService.getNodeList", eval="#{args[0]._schemaname == 'vw_building_permit' && args[0]._tag == 'issued' }")
+	public void getNodeList(def evt) {
+		def result = evt.result;
+		result << [title: "Active", id: "active" ];
+		result << [title: "Post Requirements Due", id: "post-requirements" ];
+		result << [title: "Suspended", id: "suspended" ];
+	}
+
+	@Before(pattern="QueryService.getList", eval="#{args[0]._schemaname == 'vw_building_permit' && args[0]._tag == 'issued'}")
+	public void loadList(def evt) {
+		def o = evt.args[0];
+		if( !o.node?.id ) return;
+
+		//force false to return empty list
+		if(o.node.id.matches("post-requirements|suspended" )) {
+			o.where[0] = " 1=0 ";
+			return;
+		}
+
+		/*
+		def str = " doctypeid = :typeid";
+		def m = [typeid: o.node.id ];
+
+		//add to first position of where
+		if( o.where ) {
+			o.where[0] = str + " AND " + o.where[0];	
+			o.where[1].putAll( m );
+		}
+		else {
+			o.where = [str, m];
+		}
+		*/
+	}
+
+} 
